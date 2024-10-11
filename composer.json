@@ -1,0 +1,25 @@
+{
+  "name": "thelia/shopimind-module",
+  "description": "Shopimind module for Thelia",
+  "license": "LGPL-3.0-or-later",
+  "type": "thelia-module",
+  "repositories": [
+    {
+        "type": "vcs",
+        "url": "https://bitbucket.org/shopimind/shopimind-api-php-sdk.git"
+    }
+  ],
+  "require": {
+    "thelia/installer": "~1.1",
+    "shopimind/sdk-shopimind": "1.0.3"
+  },
+  "extra": {
+    "installer-name": "Shopimind"
+  },
+  "config": {
+    "allow-plugins": {
+      "thelia/installer": true
+    },
+    "vendor-dir": "vendor-module"
+  }
+}

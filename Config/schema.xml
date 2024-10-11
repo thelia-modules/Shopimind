@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database defaultIdMethod="native" name="TheliaMain"
+          namespace="Shopimind\Model" >
+        <table name="shopimind">
+            <column name="id" type="INTEGER" primaryKey="true" autoIncrement="true" />
+            <column name="api_id" type="VARCHAR" size="255" />
+            <column name="api_password" type="VARCHAR" size="255" />
+            <column name="real_time_synchronization" type="BOOLEAN" />
+            <column name="nominative_reductions" type="BOOLEAN" />
+            <column name="cumulative_vouchers" type="BOOLEAN" />
+            <column name="out_of_stock_product_disabling" type="BOOLEAN" />
+            <column name="script_tag" type="BOOLEAN" />
+            <column name="is_connected" type="BOOLEAN" />
+            <column name="log" type="BOOLEAN" />
+        </table>
+  <external-schema filename="local/config/schema.xml" referenceOnly="true" />
+</database>

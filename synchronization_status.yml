@@ -1,0 +1,12 @@
+synchronization_status:
+    customers: 0
+    customers_addresses: 0
+    newsletter_subscribers: 0
+    orders: 0
+    orders_statuses: 0
+    products: 0
+    products_images: 0
+    products_categories: 0
+    products_manufacturers: 0
+    products_variations: 0
+    vouchers: 0

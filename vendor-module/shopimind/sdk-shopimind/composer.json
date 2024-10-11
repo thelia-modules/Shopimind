@@ -1,0 +1,22 @@
+{
+    "name": "shopimind/sdk-shopimind",
+    "description": "Shopimind API SDK for PHP",
+    "license": "MIT",
+    "version": "1.0.3",
+    "type": "library",
+    "authors": [
+        {
+            "name": "ShopiMind",
+            "email": "dev@shopimind.com"
+        }
+    ],
+    "require": {
+        "guzzlehttp/guzzle": "^7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Shopimind\\SdkShopimind\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}

@@ -1,0 +1,13 @@
+event_priorities:
+  customers : 128
+  customers_addresses: 128
+  newsletter_subscribers: 128
+  order_coupon: 128
+  orders: 128
+  orders_status: 128
+  products: 128
+  products_images: 128
+  products_categories: 128
+  products_manufacturers: 128
+  products_variations: 128
+  vouchers: 128

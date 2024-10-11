@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<routes xmlns="http://symfony.com/schema/routing"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/routing http://symfony.com/schema/routing/routing-1.0.xsd">
+        
+    <!-- Webhook -->
+    <route id="shopimind.configuration" path="/admin/module/shopimind/configuration" methods="post">
+        <default key="_controller">Shopimind\Controller\ConfigurationController::saveConfiguration</default>
+    </route>
+    
+    <route id="shopimind.create-customer" path="/shopimind/customers" methods="post">
+        <default key="_controller">Shopimind\SpmWebHook\SpmCustomers::createCustomer</default>
+    </route>
+
+    <route id="shopimind.create-voucher" path="/shopimind/vouchers" methods="post">
+        <default key="_controller">Shopimind\SpmWebHook\SpmVouchers::createVoucher</default>
+    </route>
+    
+    <route id="shopimind.subscribe-customer" path="/shopimind/subscribe-customer" methods="post">
+        <default key="_controller">Shopimind\SpmWebHook\SpmSubscribeCustomer::subscribeCustomer</default>
+    </route>
+    
+    <!-- Workers -->
+    <route id="shopimind.workers.web-push-service" path="/shopimind/web-push-service-worker.js" methods="get">
+        <default key="_controller">Shopimind\Workers\WebPushServiceWorker::serveFile</default>
+    </route>
+
+    <route id="shopimind.workers.platform" path="/shopimind/platform.js" methods="get">
+        <default key="_controller">Shopimind\Workers\Platform::serveFile</default>
+    </route>
+    
+    <!-- Passive synchronization -->
+    <route id="shopimind.passive-synchronization" path="/shopimind/synchronize" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\RequestHandler::requestController</default>
+    </route>
+
+    <route id="shopimind.sync.customers" path="/shopimind/sync-customers" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomers::syncCustomers</default>
+    </route>
+
+    <route id="shopimind.sync.customers-addresses" path="/shopimind/sync-customers-addresses" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomersAddresses::syncCustomersAddresses</default>
+    </route>
+
+    <route id="shopimind.sync.newsletter-subscribers" path="/shopimind/sync-newsletter-subscribers" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncNewsletterSubscribers::syncNewsletterSubscribers</default>
+    </route>
+
+    <route id="shopimind.sync.orders" path="/shopimind/sync-orders" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncOrders::syncOrders</default>
+    </route>
+
+    <route id="shopimind.sync.order-status" path="/shopimind/sync-orders-statuses" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncOrderStatus::syncOrderStatus</default>
+    </route>
+
+    <route id="shopimind.sync.products" path="/shopimind/sync-products" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncProducts::syncProducts</default>
+    </route>
+
+    <route id="shopimind.sync.products-categories" path="/shopimind/sync-products-categories" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsCategories::syncProductsCategories</default>
+    </route>
+    
+    <route id="shopimind.sync.products-images" path="/shopimind/sync-products-images" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsImages::syncProductsImages</default>
+    </route>
+
+    <route id="shopimind.sync.products-variations" path="/shopimind/sync-products-variations" methods="post"> 
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsVariations::syncProductsVariations</default>
+    </route>
+
+    <route id="shopimind.sync.products-manufacturers" path="/shopimind/sync-products-manufacturers" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsManufacturers::syncProductsManufacturers</default>
+    </route>
+
+    <route id="shopimind.sync.vouchers" path="/shopimind/sync-vouchers" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncVouchers::syncVouchers</default>
+    </route>
+</routes>
