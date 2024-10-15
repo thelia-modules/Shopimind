@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\BrandQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,7 +47,7 @@ class SyncProductsManufacturers
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['products_manufacturers'])
@@ -109,28 +109,28 @@ class SyncProductsManufacturers
                         $productsManufacturers = BrandQuery::create()->filterById( $manufacturesIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $productsManufacturers->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $productsManufacturers->count() > 0 ) {
                     $data = [];
                     foreach ( $productsManufacturers as $productsManufacturer ) {
                         $data[] = ProductsManufacturersData::formatProductmanufacturer( $productsManufacturer );
                     }
-        
+
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmProductsManufacturers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-        
+
                     Utils::log( 'productManufacturers' , 'passive synchronization', json_encode( $response ) );
                 }
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'productManufacturers' , 'passive synchronization' , $th->getMessage() );
         }  finally {

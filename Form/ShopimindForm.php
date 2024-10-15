@@ -22,7 +22,7 @@ class ShopimindForm extends BaseForm
     protected function buildForm(): void
     {
         $config = ShopimindQuery::create()->findOne();
-        
+
         $apiId = !empty($config) ? $config->getApiId() : "";
         $apiPassword = !empty($config) ? $config->getApiPassword() : "";
         $realTimeSynchronization = !empty($config) ? $config->getRealTimeSynchronization() : "";
@@ -132,7 +132,7 @@ class ShopimindForm extends BaseForm
 
     private function printLog( $lines = 20 )
     {
-        $filepath = THELIA_MODULE_DIR . '/Shopimind/logs/module.log';
+        $filepath = realpath(__DIR__.'/../') . '/logs/module.log';
         if ( file_exists( $filepath ) ) {
             $f = fopen($filepath, "rb");
             if ($f === false) return false;

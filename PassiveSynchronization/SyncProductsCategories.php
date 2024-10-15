@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\CategoryQuery;
 use Thelia\Model\Base\LangQuery;
@@ -37,7 +37,7 @@ class SyncProductsCategories
             if ( empty( $productsCategoriesIds ) ) {
                 $count = CategoryQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }else {
-                $count = CategoryQuery::create()->filterById( $productsCategoriesIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();                
+                $count = CategoryQuery::create()->filterById( $productsCategoriesIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }
         }
 
@@ -49,7 +49,7 @@ class SyncProductsCategories
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['products_categories'])
@@ -114,36 +114,36 @@ class SyncProductsCategories
                         $categories = CategoryQuery::create()->filterById( $productsCategoriesIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $categories->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $categories->count() > 0 ) {
                     $data = [];
-        
+
                     foreach ( $categories as $category ) {
                         $categoryDefault = $category->getTranslation( $defaultLocal );
-        
+
                         foreach ( $langs as $lang ) {
                             $categoryTranslated = $category->getTranslation( $lang->getLocale() );
-                            
+
                             $data[] = ProductsCategoriesData::formatProductCategory( $category, $categoryTranslated, $categoryDefault );
                         }
                     }
-        
+
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmProductsCategories::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-        
+
                     Utils::log( 'productCategories' , 'passive synchronization', json_encode( $response ) );
                 }
-        
+
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'productCategories' , 'passive synchronization', $th->getMessage() );
         }  finally {

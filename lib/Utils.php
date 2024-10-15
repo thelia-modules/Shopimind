@@ -1,13 +1,14 @@
 <?php
 namespace Shopimind\lib;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\SdkShopimind\SpmUtils;
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Thelia\Log\Tlog;
 
 class Utils
 {
@@ -45,7 +46,7 @@ class Utils
      */
     public static function useRealTimeSynchronization(){
         $config = ShopimindQuery::create()->findOne();
-        
+
         if ( !empty( $config ) ) {
             if ( $config->getRealTimeSynchronization() && $config->getIsConnected() ) {
                 return true;
@@ -78,14 +79,14 @@ class Utils
         // TODO : implement the response handling
         return;
         $statuscode = isset( $response['statusCode'] ) ? $response['statusCode'] : '';
-        
+
         switch ( $statuscode ) {
             case 401:
                 $config = ShopimindQuery::create()->findOne();
                 $config->setIsConnected(0);
                 $config->save();
                 break;
-            
+
             default:
                 # code...
                 break;
@@ -96,15 +97,17 @@ class Utils
      * Logs synchronization events.
      *
      */
-    public static function log( $object, $action, $response, $objectId = null ){
+    public static function log( $object, $action, $response, $objectId = null )
+    {
+
         $config = ShopimindQuery::create()->findOne();
-        
+
         if ( !empty( $config ) && ($config->getLog()) ) {
-            $date = date('Y-m-d H:i:s');
             $id = !empty($objectId) ? 'id : [' .$objectId. ']' : '';
-            $message = '- [' .$date. '] Synchronization : '.$action.' '.$object.' '.$id.' '.$response. PHP_EOL;
-            
-            error_log( $message, 3, THELIA_MODULE_DIR. '/Shopimind/logs/module.log');
+            $message = '- Synchronization : '.$action.' '.$object.' '.$id.' %s '. PHP_EOL;
+            Tlog::getInstance()->error(
+                sprintf($message, $response)
+            );
         }
     }
 
@@ -119,13 +122,13 @@ class Utils
         throw $th;
         print (PHP_EOL);
     }
-    
+
     /**
      * Retrieve module parameters
      *
      */
     public static function getParameters(){
-        $parametersFile = THELIA_MODULE_DIR . '/Shopimind/parameters.yml';
+        $parametersFile = realpath(__DIR__.'/../').'/Config/parameters.yml';
         if ( file_exists( $parametersFile ) ) {
             return Yaml::parseFile(  $parametersFile );
         }
@@ -208,8 +211,8 @@ class Utils
      */
     public static function loadSynchronizationStatus() {
         try {
-            $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
-    
+            $synchronizationStatusFile = realpath(__DIR__.'/../').'/Config/synchronization_status.yml';
+
             if ( !file_exists( $synchronizationStatusFile ) ) {
                 $defaultSyncStatus = [
                     'synchronization_status' => [
@@ -230,7 +233,7 @@ class Utils
                 $yaml = Yaml::dump( $defaultSyncStatus, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
                 file_put_contents( $synchronizationStatusFile, $yaml );
             }
-        
+
             return Yaml::parseFile(  $synchronizationStatusFile );
         } catch (\Throwable $th) {
             return null;
@@ -247,7 +250,7 @@ class Utils
 
         $status['synchronization_status'][$key] = $value;
 
-        $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
+        $synchronizationStatusFile = realpath(__DIR__.'/../').'/Config/synchronization_status.yml';
 
         $yaml = Yaml::dump( $status, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
         file_put_contents( $synchronizationStatusFile, $yaml );

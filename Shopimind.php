@@ -1,5 +1,15 @@
 <?php
 
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind;
 
 use Propel\Runtime\Connection\ConnectionInterface;
@@ -21,7 +31,7 @@ class Shopimind extends BaseModule
     {
         if ( !self::getConfigValue('is_initialized', false) ) {
             $database = new Database($con);
-            
+
             $database->insertSql(null, [__DIR__.'/Config/TheliaMain.sql']);
 
             self::setConfigValue('is_initialized', true);
@@ -46,7 +56,7 @@ class Shopimind extends BaseModule
         $servicesConfigurator->load(self::getModuleCode().'\\', __DIR__)
             ->exclude([
                 THELIA_MODULE_DIR . ucfirst(self::getModuleCode()). "/I18n/*",
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()) . "/PassiveSynchronization/Scripts/*"    
+                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()) . "/PassiveSynchronization/Scripts/*"
             ])
             ->autowire(true)
             ->autoconfigure(true);

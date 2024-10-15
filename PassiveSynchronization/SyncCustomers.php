@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../') . '/vendor-module/autoload.php';
 
 use Thelia\Model\CustomerQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,7 +48,7 @@ class SyncCustomers
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['customers'])
@@ -81,7 +81,7 @@ class SyncCustomers
             $body =  json_decode( $request->getContent(), true );
 
             $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
-            
+
             $customerIds = null;
             $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
             if ( !empty( $ids ) ) {
@@ -110,28 +110,28 @@ class SyncCustomers
                         $customers = CustomerQuery::create()->filterById( $customerIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $customers->count() < $limit ) {
                     $hasMore = false;
                 }else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $customers->count() > 0 ) {
                     $data = [];
                     foreach ( $customers as $customer ) {
                         $data[] = CustomersData::formatCustomer( $customer );
                     }
-            
+
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmCustomers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-                    
+
                     Utils::log( 'customers', 'passive synchronization', json_encode( $response ) );
                 }
             } while ( $hasMore );
-            
+
         } catch (\Throwable $th) {
             Utils::log( 'customers' , 'passive synchronization', $th->getMessage() );
         } finally {

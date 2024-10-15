@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\NewsletterQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,7 +30,7 @@ class SyncNewsletterSubscribers
             if ( empty( $newsletterSubscriberIds ) ) {
                 $count = NewsletterQuery::create()->find()->count();
             }else {
-                $count = NewsletterQuery::create()->filterById( $newsletterSubscriberIds )->find()->count();                
+                $count = NewsletterQuery::create()->filterById( $newsletterSubscriberIds )->find()->count();
             }
         } else {
             if ( empty( $newsletterSubscriberIds ) ) {
@@ -48,11 +48,11 @@ class SyncNewsletterSubscribers
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus
             && isset( $synchronizationStatus['synchronization_status']['newsletter_subscribers'] )
-            && $synchronizationStatus['synchronization_status']['newsletter_subscribers'] == 1 
+            && $synchronizationStatus['synchronization_status']['newsletter_subscribers'] == 1
             ) {
             return [
                 'success' => false,
@@ -100,23 +100,23 @@ class SyncNewsletterSubscribers
                     if ( empty( $newsletterSubscriberIds ) ) {
                         $newsletters = NewsletterQuery::create()->offset( $offset )->limit( $limit )->find();
                     }else {
-                        $newsletters = NewsletterQuery::create()->filterById( $newsletterSubscriberIds )->offset( $offset )->limit( $limit )->find();                        
+                        $newsletters = NewsletterQuery::create()->filterById( $newsletterSubscriberIds )->offset( $offset )->limit( $limit )->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $newsletterSubscriberIds ) ) {
                         $newsletters = NewsletterQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $newsletters = NewsletterQuery::create()->offset( $offset )->filterById( $newsletterSubscriberIds )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );                        
+                        $newsletters = NewsletterQuery::create()->offset( $offset )->filterById( $newsletterSubscriberIds )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $newsletters->count() < $limit ) {
                     $hasMore = false;
                 }else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $newsletters->count() > 0 ) {
                     $data = [];
                     foreach ( $newsletters as $newsletter ) {
@@ -125,14 +125,14 @@ class SyncNewsletterSubscribers
 
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmNewsletterSubscribers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-        
+
                     Utils::log( 'newsletterSubscribers' , 'passive synchronization', json_encode( $response ) );
                 }
-        
+
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'newsletterSubscribers' , 'passive synchronization', $th->getMessage() );
         }  finally {

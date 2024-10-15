@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\ProductQuery;
 use Thelia\Model\Base\LangQuery;
@@ -39,7 +39,7 @@ class SyncProducts extends AbstractController
             if ( empty( $productsIds ) ) {
                 $count = ProductQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }else {
-                $count = ProductQuery::create()->filterById( $productsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();                
+                $count = ProductQuery::create()->filterById( $productsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }
         }
 
@@ -51,7 +51,7 @@ class SyncProducts extends AbstractController
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['products'])
@@ -116,35 +116,35 @@ class SyncProducts extends AbstractController
                         $products = ProductQuery::create()->filterById( $productsIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $products->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $products->count() > 0 ) {
                     $data = [];
-        
+
                     foreach ( $products as $product ) {
                         $productDefault = $product->getTranslation( $defaultLocal );
-        
+
                         foreach ( $langs as $lang ) {
                             $productTranslated = $product->getTranslation( $lang->getLocale() );
-        
+
                             $data[] = ProductsData::formatProduct( $product, $productTranslated, $productDefault, $dispatcher );
                         }
                     }
 
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmProducts::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-        
+
                     Utils::log( 'products' , 'passive synchronization' , json_encode( $response ) );
                 }
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'products' , 'passive synchronization' , $th->getMessage() );
         } finally {

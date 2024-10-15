@@ -1,46 +1,53 @@
 <?php
 
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\Data;
 
-use Thelia\Model\NewsletterQuery;
 use Thelia\Model\AddressQuery;
 use Thelia\Model\CustomerQuery;
 use Thelia\Model\Newsletter;
+use Thelia\Model\NewsletterQuery;
 
 class NewsletterSubscribersData
 {
     /**
      * Formats the newsletter data to match the Shopimind format.
-     *
-     * @param Newsletter $newsletter
-     * @return array
      */
-    public static function formatNewsletterSubscriber( Newsletter $newsletter ): array
+    public static function formatNewsletterSubscriber(Newsletter $newsletter): array
     {
-        $data = [
-            "email" => $newsletter->getEmail(),
-            "is_subscribed" => self::isNewsletterSubscribed( $newsletter->getEmail() ),
-            "first_name" => $newsletter->getFirstname() ? $newsletter->getFirstname() : "" ,
-            "last_name" => $newsletter->getLastname() ? $newsletter->getLastname() : "" ,
-            "postal_code" => self::getZipCode( $newsletter->getEmail() ),
-            "lang" => substr( $newsletter->getLocale() , 0, 2 ),
-            "updated_at" => $newsletter->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+        return [
+            'email' => $newsletter->getEmail(),
+            'is_subscribed' => self::isNewsletterSubscribed($newsletter->getEmail()),
+            'first_name' => $newsletter->getFirstname() ?? '',
+            'last_name' => $newsletter->getLastname() ?? '',
+            'postal_code' => self::getZipCode($newsletter->getEmail()),
+            'lang' => substr($newsletter->getLocale(), 0, 2),
+            'updated_at' => $newsletter->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
         ];
-
-        return $data;
     }
 
     /**
      * Verifies whether a customer is subscribed to the newsletter.
      *
-     * @param string $customerEmail The customer's email address.
-     * @return bool True if the customer is subscribed, false otherwise.
+     * @param string $customerEmail the customer's email address
+     *
+     * @return bool true if the customer is subscribed, false otherwise
      */
-    public static function isNewsletterSubscribed( string $customerEmail) : bool{
-        $newsletter = NewsletterQuery::create()->findOneByEmail( $customerEmail );
-        if ( !empty($newsletter) ) {
-            return ! $newsletter->getUnsubscribed();
-        }else {
+    public static function isNewsletterSubscribed(string $customerEmail): bool
+    {
+        $newsletter = NewsletterQuery::create()->findOneByEmail($customerEmail);
+        if (!empty($newsletter)) {
+            return !$newsletter->getUnsubscribed();
+        } else {
             return false;
         }
     }
@@ -48,34 +55,36 @@ class NewsletterSubscribersData
     /**
      * Retrieves the zipcode for a customer.
      *
-     * @param string $email The email.
+     * @param string $email the email
      */
-    public static function getZipCode( string $email ) {
-        $customer = CustomerQuery::create()->findOneByEmail( $email );
-        if ( !empty( $customer ) ) {
+    public static function getZipCode(string $email): string
+    {
+        $customer = CustomerQuery::create()->findOneByEmail($email);
+        if (!empty($customer)) {
             $customerId = $customer->getId();
-            $address = AddressQuery::create()->findOneByCustomerId( $customerId );
-            $zipCode = !empty($address) ? $address->getZipCode() : '';
-            return $zipCode;
+            $address = AddressQuery::create()->findOneByCustomerId($customerId);
+
+            return !empty($address) ? $address->getZipCode() : '';
         }
-        return "0";
+
+        return '0';
     }
 
     /**
-     * Format data to update customer after newslettersubscribing update
-     *
+     * Format data to update customer after newslettersubscribing update.
      * @param string $email
+     * @return array
      */
-    public static function customerData( string $email ): array
+    public static function customerData(string $email): array
     {
-        $customer = CustomerQuery::create()->findOneByEmail( $email );
-        
+        $customer = CustomerQuery::create()->findOneByEmail($email);
+
         $customerData = [];
-        
-        if ( !empty( $customer ) ) {
+
+        if (!empty($customer)) {
             $customerData = [
                 'customer_id' => $customer->getId(),
-                'is_newsletter_subscribed' => self::isNewsletterSubscribed( $email ),
+                'is_newsletter_subscribed' => self::isNewsletterSubscribed($email),
             ];
         }
 

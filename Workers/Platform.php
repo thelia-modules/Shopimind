@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\Response;
 class Platform
 {
     public static function serveFile(){
-        $filePath = THELIA_MODULE_DIR. '/Shopimind/Workers/Scripts/platform.js';
+        $filePath = realpath(__DIR__.'/../') . '/Workers/Scripts/platform.js';
 
         if ( file_exists( $filePath ) ) {
             $response = new Response( file_get_contents( $filePath ) );

@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\ProductImageQuery;
 use Shopimind\lib\Utils;
@@ -51,7 +51,7 @@ class SyncProductsImages extends AbstractController
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['products_images'])
@@ -78,7 +78,7 @@ class SyncProductsImages extends AbstractController
      *
      * @return void
      */
-    public static function syncProductsImages( Request $request, EventDispatcherInterface $dispatcher ) 
+    public static function syncProductsImages( Request $request, EventDispatcherInterface $dispatcher )
     {
         try {
             $body =  json_decode( $request->getContent(), true );
@@ -115,13 +115,13 @@ class SyncProductsImages extends AbstractController
                         $productImages = ProductImageQuery::create()->filterById( $productsImagesIds )->offset( $offset )->limit( $limit )->orderBy('product_id')->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $productImages->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-                
+
                 if ( $productImages->count() > 0 ) {
                     $data = [];
                     foreach ( $productImages as $productImage ) {
@@ -130,18 +130,18 @@ class SyncProductsImages extends AbstractController
                             $data[ $productId ][] = ProductImagesData::formatProductImage( $productImage, $lang, $dispatcher, 'update' );
                         }
                     }
-        
+
                     foreach ( $data as $productId => $value ) {
                         $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                         $response = SpmProductsImages::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
-                    
+
                         Utils::handleResponse( $response );
-        
+
                         Utils::log( 'productImage' , 'passive synchronization', json_encode( $response ) );
                     }
                 }
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'productImage' , 'passive synchronization', $th->getMessage() );
         }  finally {

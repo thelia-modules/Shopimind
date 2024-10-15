@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\OrderStatusQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,7 +49,7 @@ class SyncOrderStatus
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
+
         if (
             $synchronizationStatus &&
             isset($synchronizationStatus['synchronization_status']['orders_statuses'])
@@ -114,36 +114,36 @@ class SyncOrderStatus
                         $ordersStatuses = OrderStatusQuery::create()->filterById( $orderStatuesesIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
-        
+
                 if ( $ordersStatuses->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
-        
+
                 if ( $ordersStatuses->count() > 0 ) {
                     $data = [];
-        
+
                     foreach ( $ordersStatuses as $ordersStatus ) {
                         $orderStatusDefault = $ordersStatus->getTranslation( $defaultLocal );
-        
+
                         foreach ( $langs as $lang ) {
                             $orderStatusTranslated = $ordersStatus->getTranslation( $lang->getLocale() );
-        
+
                             $data[] = OrderStatusData::formatOrderStatus( $ordersStatus, $orderStatusTranslated, $orderStatusDefault );
                         }
                     }
-        
+
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmOrdersStatus::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
+
                     Utils::handleResponse( $response );
-        
+
                     Utils::log( 'orderStatuses' , 'passive synchronization', json_encode( $response ) );
                 }
-        
+
             } while ( $hasMore );
-        
+
         } catch (\Throwable $th) {
             Utils::log( 'orderStatuses' , 'passive synchronization', $th->getMessage() );
         }  finally {

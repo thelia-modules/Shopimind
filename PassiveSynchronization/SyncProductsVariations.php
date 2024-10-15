@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
 
 use Thelia\Model\ProductSaleElementsQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,7 +34,7 @@ class SyncProductsVariations extends AbstractController
             if ( empty( $productsVariationsIds ) ) {
                 $count = ProductSaleElementsQuery::create()->find()->count();
             }else {
-                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->find()->count();                
+                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->find()->count();
             }
         } else {
             if ( empty( $productsVariationsIds ) ) {
@@ -52,12 +52,12 @@ class SyncProductsVariations extends AbstractController
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
-        if ( 
-            !empty( $synchronizationStatus ) 
-            && isset( $synchronizationStatus['synchronization_status'] ) 
-            && isset( $synchronizationStatus['synchronization_status']['products_variations'] ) 
-            && $synchronizationStatus['synchronization_status']['products_variations'] == 1 
+
+        if (
+            !empty( $synchronizationStatus )
+            && isset( $synchronizationStatus['synchronization_status'] )
+            && isset( $synchronizationStatus['synchronization_status']['products_variations'] )
+            && $synchronizationStatus['synchronization_status']['products_variations'] == 1
             ) {
             return [
                 'success' => false,
@@ -72,9 +72,9 @@ class SyncProductsVariations extends AbstractController
         return [
             'success' => true,
             'count' => $count,
-        ]; 
+        ];
     }
-  
+
     /**
      * Synchronizes product variations.
      *
@@ -121,7 +121,7 @@ class SyncProductsVariations extends AbstractController
                 if ( $productsVariations->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;    
+                    $offset += $limit;
                 }
 
                 if ( $productsVariations->count() > 0 ) {
@@ -136,7 +136,7 @@ class SyncProductsVariations extends AbstractController
                     foreach ( $data as $productId => $value ) {
                         $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                         $response = SpmProductsVariations::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
-                    
+
                         Utils::handleResponse( $response );
 
                         Utils::log( 'productsVariations' , 'passive synchronization', json_encode( $response ) );

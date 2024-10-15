@@ -6,8 +6,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class WebPushServiceWorker
 {
-    public static function serveFile(){
-        $filePath = THELIA_MODULE_DIR. '/Shopimind/Workers/Scripts/web-push-service-worker.js';
+    public static function serveFile(): Response
+    {
+        $filePath = realpath(__DIR__.'/../') . '/Workers/Scripts/web-push-service-worker.js';
 
         if ( file_exists( $filePath ) ) {
             $response = new Response( file_get_contents( $filePath ) );
