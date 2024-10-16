@@ -1,16 +1,25 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\Form;
 
+use Shopimind\lib\Utils;
 use Shopimind\Model\Base\ShopimindQuery;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Validator\Constraints;
 use Thelia\Form\BaseForm;
-use Symfony\Component\HttpFoundation\Session\Session;
-use Shopimind\lib\Utils;
-
 
 /**
  * Class ShopimindForm.
@@ -19,30 +28,33 @@ use Shopimind\lib\Utils;
  */
 class ShopimindForm extends BaseForm
 {
+    /**
+     * Build the form.
+     */
     protected function buildForm(): void
     {
         $config = ShopimindQuery::create()->findOne();
-        
-        $apiId = !empty($config) ? $config->getApiId() : "";
-        $apiPassword = !empty($config) ? $config->getApiPassword() : "";
-        $realTimeSynchronization = !empty($config) ? $config->getRealTimeSynchronization() : "";
-        $nominativeReductions = !empty($config) ? $config->getNominativeReductions() : "";
-        $cumulativeVouchers = !empty($config) ? $config->getCumulativeVouchers() : "";
-        $outOfStockProductDisabling = !empty($config) ? $config->getOutOfStockProductDisabling() : "";
+
+        $apiId = !empty($config) ? $config->getApiId() : '';
+        $apiPassword = !empty($config) ? $config->getApiPassword() : '';
+        $realTimeSynchronization = !empty($config) ? $config->getRealTimeSynchronization() : '';
+        $nominativeReductions = !empty($config) ? $config->getNominativeReductions() : '';
+        $cumulativeVouchers = !empty($config) ? $config->getCumulativeVouchers() : '';
+        $outOfStockProductDisabling = !empty($config) ? $config->getOutOfStockProductDisabling() : '';
         $scriptTag = !empty($config) ? $config->getScriptTag() : 1;
-        $log = !empty($config) ? $config->getLog() : "";
+        $log = !empty($config) ? $config->getLog() : '';
 
         $session = new Session();
         $flashbag = $session->getFlashBag();
-        $successMsg = "";
-        $errorMsg = "";
-        foreach ( $flashbag->get('success') as $message ) {
+        $successMsg = '';
+        $errorMsg = '';
+        foreach ($flashbag->get('success') as $message) {
             $successMsg = $message;
         }
 
-        $isNotConnected = "";
-        if ( !Utils::isConnected() ) {
-            $isNotConnected = "Your module is not connected.";
+        $isNotConnected = '';
+        if (!Utils::isConnected()) {
+            $isNotConnected = 'Your module is not connected.';
         }
 
         $this->formBuilder
@@ -76,9 +88,6 @@ class ShopimindForm extends BaseForm
             'data' => $apiId,
             'constraints' => [
                 new Constraints\NotBlank(),
-                // new Constraints\Callback(
-                //     [$this, 'verifyApiId']
-                // ),
             ],
         ])
         ->add('api-password', TextType::class, [
@@ -87,12 +96,9 @@ class ShopimindForm extends BaseForm
             'data' => $apiPassword,
             'constraints' => [
                 new Constraints\NotBlank(),
-                // new Constraints\Callback(
-                //     [$this, 'verifyApiId']
-                // ),
             ],
             'attr' => [
-                'class' => 'password'
+                'class' => 'password',
             ],
         ])
         ->add('real-time-synchronization', CheckboxType::class, [
@@ -130,35 +136,40 @@ class ShopimindForm extends BaseForm
         ]);
     }
 
-    private function printLog( $lines = 20 )
+    /**
+     * Print Log.
+     */
+    private function printLog(): string
     {
-        $filepath = THELIA_MODULE_DIR . '/Shopimind/logs/module.log';
-        if ( file_exists( $filepath ) ) {
-            $f = fopen($filepath, "rb");
-            if ($f === false) return false;
+        $filepath = THELIA_LOG_DIR.'/shopimind.log';
+        if (file_exists($filepath)) {
+            $f = fopen($filepath, 'r');
+            if ($f === false) {
+                return false;
+            }
 
-            fseek($f, 0, SEEK_END);
+            fseek($f, 0, \SEEK_END);
             $output = '';
             $currentLine = 0;
 
-            for ($pos = ftell($f); $pos > 0; $pos--) {
+            for ($pos = ftell($f); $pos > 0; --$pos) {
                 fseek($f, $pos - 1);
                 $char = fread($f, 1);
 
                 if ($char === "\n") {
-                    $currentLine++;
-                    if ($currentLine === $lines) {
+                    ++$currentLine;
+                    if ($currentLine === 20) {
                         break;
                     }
                 }
-                $output = $char . $output;
+                $output = $char.$output;
             }
 
             fclose($f);
 
-            $output = nl2br(htmlspecialchars($output));
-
-            return $output;
+            return nl2br(htmlspecialchars($output));
         }
+
+        return '';
     }
 }
