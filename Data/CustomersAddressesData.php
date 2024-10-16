@@ -19,6 +19,9 @@ class CustomersAddressesData
 {
     /**
      * Formats the customer address data to match the Shopimind format.
+     *
+     * @param Address $address
+     * @return array
      */
     public static function formatCustomerAddress(Address $address): array
     {

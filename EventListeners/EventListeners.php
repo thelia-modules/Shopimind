@@ -1,56 +1,57 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\EventListeners;
 
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Thelia\Core\Event\TheliaEvents;
 use Shopimind\lib\Utils;
-
-use Thelia\Model\Event\CustomerEvent;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Thelia\Core\Event\Product\ProductCreateEvent;
+use Thelia\Core\Event\Product\ProductUpdateEvent;
+use Thelia\Core\Event\ProductSaleElement\ProductSaleElementCreateEvent;
+use Thelia\Core\Event\ProductSaleElement\ProductSaleElementUpdateEvent;
+use Thelia\Core\Event\TheliaEvents;
 use Thelia\Model\Event\AddressEvent;
+use Thelia\Model\Event\BrandEvent;
+use Thelia\Model\Event\CategoryEvent;
+use Thelia\Model\Event\CouponEvent;
+use Thelia\Model\Event\CustomerEvent;
 use Thelia\Model\Event\NewsletterEvent;
 use Thelia\Model\Event\OrderCouponEvent;
 use Thelia\Model\Event\OrderEvent;
 use Thelia\Model\Event\OrderStatusEvent;
-use Thelia\Model\Event\ProductImageEvent;
-use Thelia\Model\Event\CategoryEvent;
 use Thelia\Model\Event\ProductEvent;
-use Thelia\Core\Event\Product\ProductCreateEvent;
-use Thelia\Core\Event\Product\ProductUpdateEvent;
-use Thelia\Model\Event\BrandEvent;
+use Thelia\Model\Event\ProductImageEvent;
 use Thelia\Model\Event\ProductSaleElementsEvent;
-use Thelia\Core\Event\ProductSaleElement\ProductSaleElementUpdateEvent;
-use Thelia\Core\Event\ProductSaleElement\ProductSaleElementCreateEvent;
-use Thelia\Model\Event\CouponEvent;
-
-use Shopimind\EventListeners\CustomersListener;
-use Shopimind\EventListeners\CustomersAddressesListener;
-use Shopimind\EventListeners\NewsletterSubscribersListener;
-use Shopimind\EventListeners\OrderCouponListener;
-use Shopimind\EventListeners\OrderListener;
-use Shopimind\EventListeners\OrderStatusListener;
-use Shopimind\EventListeners\ProductImagesListener;
-use Shopimind\EventListeners\ProductsCategoriesListener;
-use Shopimind\EventListeners\ProductsManufacturersListener;
-use Shopimind\EventListeners\ProductsVariationsListener;
-use Shopimind\EventListeners\VouchersListener;
 
 class EventListeners implements EventSubscriberInterface
 {
-    private $dispatcher;
+    private EventDispatcherInterface $dispatcher;
 
     public function __construct(EventDispatcherInterface $dispatcher)
     {
         $this->dispatcher = $dispatcher;
     }
 
-    public static function getSubscribedEvents()
+    /**
+     * @return array
+     */
+    public static function getSubscribedEvents(): array
     {
         $parameters = Utils::getParameters();
         $defaultPriority = 128;
 
         $customersPriority = $parameters['event_priorities']['customers'] ?? $defaultPriority;
-        $custoersAddressesPriority = $parameters['event_priorities']['customers_addresses'] ?? $defaultPriority;
+        $customersAddressesPriority = $parameters['event_priorities']['customers_addresses'] ?? $defaultPriority;
         $newsletterSubscirbersPriority = $parameters['event_priorities']['newsletter_subscribers'] ?? $defaultPriority;
         $orderCouponPriority = $parameters['event_priorities']['order_coupon'] ?? $defaultPriority;
         $orderPriority = $parameters['event_priorities']['orders'] ?? $defaultPriority;
@@ -66,9 +67,9 @@ class EventListeners implements EventSubscriberInterface
             CustomerEvent::POST_INSERT => ['postCustomerInsert', $customersPriority],
             CustomerEvent::POST_UPDATE => ['postCustomerUpdate', $customersPriority],
             CustomerEvent::POST_DELETE => ['postCustomerDelete', $customersPriority],
-            AddressEvent::POST_INSERT => ['postAddressInsert', $custoersAddressesPriority],
-            AddressEvent::POST_UPDATE => ['postAddressUpdate', $custoersAddressesPriority],
-            AddressEvent::POST_DELETE => ['postAddressDelete', $custoersAddressesPriority],
+            AddressEvent::POST_INSERT => ['postAddressInsert', $customersAddressesPriority],
+            AddressEvent::POST_UPDATE => ['postAddressUpdate', $customersAddressesPriority],
+            AddressEvent::POST_DELETE => ['postAddressDelete', $customersAddressesPriority],
             NewsletterEvent::POST_INSERT => ['postNewsletterInsert', $newsletterSubscirbersPriority],
             NewsletterEvent::POST_UPDATE => ['postNewsletterUpdate', $newsletterSubscirbersPriority],
             NewsletterEvent::POST_DELETE => ['postNewsletterDelete', $newsletterSubscirbersPriority],
@@ -101,284 +102,440 @@ class EventListeners implements EventSubscriberInterface
     }
 
     /**
-     * Event listener for customer-related actions.
-     * 
+     * Event listener for customer-insert actions.
+     *
+     * @param CustomerEvent $event
+     * @return void
      */
-    public function postCustomerInsert(CustomerEvent $event)
+    public function postCustomerInsert(CustomerEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersListener::postCustomerInsert( $event );
-        }
-    }
-
-    public function postCustomerUpdate(CustomerEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersListener::postCustomerUpdate( $event );
-        }
-    }
-
-    public function postCustomerDelete(CustomerEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersListener::postCustomerDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersListener::postCustomerInsert($event);
         }
     }
 
     /**
-     * Event listener for customers-addresses-related actions.
-     * 
+     * Event listener for customer-update actions.
+     *
+     * @param CustomerEvent $event
+     * @return void
      */
-    public function postAddressInsert(AddressEvent $event)
+    public function postCustomerUpdate(CustomerEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersAddressesListener::postAddressInsert( $event );
-        }
-    }
-
-    public function postAddressUpdate(AddressEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersAddressesListener::postAddressUpdate( $event );
-        }
-    }
-
-    public function postAddressDelete(AddressEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            CustomersAddressesListener::postAddressDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersListener::postCustomerUpdate($event);
         }
     }
 
     /**
-     * Event listener for newsletter-related actions.
-     * 
+     * Event listener for customer-delete actions.
+     *
+     * @param CustomerEvent $event
+     * @return void
      */
-    public function postNewsletterInsert(NewsletterEvent $event)
+    public function postCustomerDelete(CustomerEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            NewsletterSubscribersListener::postNewsletterInsert( $event );
-        }
-    }
-
-    public function postNewsletterUpdate(NewsletterEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            NewsletterSubscribersListener::postNewsletterUpdate( $event );
-        }
-    }
-
-    public function postNewsletterDelete(NewsletterEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            NewsletterSubscribersListener::postNewsletterUpdate( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersListener::postCustomerDelete($event);
         }
     }
 
     /**
-     * Event listener for order-coupon-related actions.
-     * 
+     * Event listener for customers-addresses-insert actions.
+     *
+     * @param AddressEvent $event
+     * @return void
      */
-    public function postOrderCouponInsert(OrderCouponEvent $event)
+    public function postAddressInsert(AddressEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            OrderCouponListener::postOrderCouponInsert( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersAddressesListener::postAddressInsert($event);
         }
     }
 
     /**
-     * Event listener for order-related actions.
-     * 
+     * Event listener for customers-addresses-update actions.
+     *
+     * @param AddressEvent $event
+     * @return void
      */
-    public function postOrderInsert(OrderEvent $event)
+    public function postAddressUpdate(AddressEvent $event): void
     {
-        OrderListener::postOrderInsert( $event );
-    }
-
-    public function postOrderUpdate(OrderEvent $event)
-    {
-        OrderListener::postOrderUpdate( $event );
-    }
-
-    public function postOrderDelete(OrderEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            OrderListener::postOrderDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersAddressesListener::postAddressUpdate($event);
         }
     }
 
     /**
-     * Event listener for order-status-related actions.
-     * 
+     * Event listener for customers-addresses-delete actions.
+     *
+     * @param AddressEvent $event
+     * @return void
      */
-    public function postOrderStatusInsert(OrderStatusEvent $event)
+    public function postAddressDelete(AddressEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            OrderStatusListener::postOrderStatusInsert( $event );
-        }
-    }
-
-    public function postOrderStatusUpdate(OrderStatusEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            OrderStatusListener::postOrderStatusUpdate( $event );
-        }
-    }
-
-    public function postOrderStatusDelete(OrderStatusEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            OrderStatusListener::postOrderStatusDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            CustomersAddressesListener::postAddressDelete($event);
         }
     }
 
     /**
-     * Event listener for product-images-related actions.
-     * 
+     * Event listener for newsletter-insert actions.
+     *
+     * @param NewsletterEvent $event
+     * @return void
      */
-    public function postProductImageInsert(ProductImageEvent $event)
+    public function postNewsletterInsert(NewsletterEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductImagesListener::postProductImageInsert( $event, $this->dispatcher );
-        }
-    }
-
-    public function postProductImageUpdate(ProductImageEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductImagesListener::postProductImageUpdate( $event, $this->dispatcher );
-        }
-    }
-
-    public function postProductImageDelete(ProductImageEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductImagesListener::postProductImageDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            NewsletterSubscribersListener::postNewsletterInsert($event);
         }
     }
 
     /**
-     * Event listener for product-categories-related actions.
-     * 
+     * Event listener for newsletter-update actions.
+     *
+     * @param NewsletterEvent $event
+     * @return void
      */
-    public function postCategoryInsert(CategoryEvent $event)
+    public function postNewsletterUpdate(NewsletterEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsCategoriesListener::postCategoryInsert( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            NewsletterSubscribersListener::postNewsletterUpdate($event);
         }
     }
-
-    public function postCategoryUpdate(CategoryEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsCategoriesListener::postCategoryUpdate( $event );
-        }
-    }
-
-    public function postCategoryDelete(CategoryEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsCategoriesListener::postCategoryDelete( $event );
-        }
-    } 
 
     /**
-     * Event listener for products-related actions.
-     * 
+     * Event listener for newsletter-delete actions.
+     *
+     * @param NewsletterEvent $event
+     * @return void
      */
-    public function postProductInsert(ProductCreateEvent $event)
+    public function postNewsletterDelete(NewsletterEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsListener::postProductInsert( $event, $this->dispatcher );
+        if (Utils::useRealTimeSynchronization()) {
+            NewsletterSubscribersListener::postNewsletterUpdate($event);
         }
     }
-
-    public function postProductUpdate(ProductUpdateEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsListener::postProductUpdate( $event, $this->dispatcher );
-        }
-    }
-
-    public function postProductDelete(ProductEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsListener::postProductDelete( $event );
-        }
-    } 
 
     /**
-     * Event listener for products-manufacturers-related actions.
-     * 
+     * Event listener for order-coupon-insert actions.
+     *
+     * @param OrderCouponEvent $event
+     * @return void
      */
-    public function postBrandInsert(BrandEvent $event)
+    public function postOrderCouponInsert(OrderCouponEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsManufacturersListener::postBrandInsert( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            OrderCouponListener::postOrderCouponInsert($event);
         }
     }
-
-    public function postBrandUpdate(BrandEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsManufacturersListener::postBrandUpdate( $event );
-        }
-    }
-
-    public function postBrandDelete(BrandEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsManufacturersListener::postBrandDelete( $event );
-        }
-    } 
 
     /**
-     * Event listener for products-variations-related actions.
-     * 
+     * Event listener for order-insert actions.
+     *
+     * @param OrderEvent $event
+     * @return void
      */
-    public function postProductSaleElementsInsert(ProductSaleElementCreateEvent $event)
+    public function postOrderInsert(OrderEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsVariationsListener::postProductSaleElementsInsert( $event, $this->dispatcher );
-        }
+        OrderListener::postOrderInsert($event);
     }
 
-    public function postProductSaleElementsUpdate(ProductSaleElementUpdateEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsVariationsListener::postProductSaleElementsUpdate( $event, $this->dispatcher );
-        }
-    }
-
-    public function postProductSaleElementsDelete(ProductSaleElementsEvent $event)
-    {
-        if ( Utils::useRealTimeSynchronization() ){
-            ProductsVariationsListener::postProductSaleElementsDelete( $event );
-        }
-    } 
-
-     /**
-     * Event listener for coupon-related actions.
-     * 
+    /**
+     * Event listener for order-update actions.
+     *
+     * @param OrderEvent $event
+     * @return void
      */
-    public function postCouponInsert(CouponEvent $event)
+    public function postOrderUpdate(OrderEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            VouchersListener::postCouponInsert( $event );
+        OrderListener::postOrderUpdate($event);
+    }
+
+    /**
+     * Event listener for order-delete actions.
+     *
+     * @param OrderEvent $event
+     * @return void
+     */
+    public function postOrderDelete(OrderEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            OrderListener::postOrderDelete($event);
         }
     }
 
-    public function postCouponUpdate(CouponEvent $event)
+    /**
+     * Event listener for order-status-insert actions.
+     *
+     * @param OrderStatusEvent $event
+     * @return void
+     */
+    public function postOrderStatusInsert(OrderStatusEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            VouchersListener::postCouponUpdate( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            OrderStatusListener::postOrderStatusInsert($event);
         }
     }
 
-    public function postCouponDelete(CouponEvent $event)
+    /**
+     * Event listener for order-status-update actions.
+     *
+     * @param OrderStatusEvent $event
+     * @return void
+     */
+    public function postOrderStatusUpdate(OrderStatusEvent $event): void
     {
-        if ( Utils::useRealTimeSynchronization() ){
-            VouchersListener::postCouponDelete( $event );
+        if (Utils::useRealTimeSynchronization()) {
+            OrderStatusListener::postOrderStatusUpdate($event);
         }
-    } 
+    }
+
+    /**
+     * Event listener for order-status-delete actions.
+     *
+     * @param OrderStatusEvent $event
+     * @return void
+     */
+    public function postOrderStatusDelete(OrderStatusEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            OrderStatusListener::postOrderStatusDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for product-images-insert actions.
+     *
+     * @param ProductImageEvent $event
+     * @return void
+     */
+    public function postProductImageInsert(ProductImageEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductImagesListener::postProductImageInsert($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for product-images-update actions.
+     *
+     * @param ProductImageEvent $event
+     * @return void
+     */
+    public function postProductImageUpdate(ProductImageEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductImagesListener::postProductImageUpdate($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for product-images-delete actions.
+     *
+     * @param ProductImageEvent $event
+     * @return void
+     */
+    public function postProductImageDelete(ProductImageEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductImagesListener::postProductImageDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for product-categories-insert actions.
+     *
+     * @param CategoryEvent $event
+     * @return void
+     */
+    public function postCategoryInsert(CategoryEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsCategoriesListener::postCategoryInsert($event);
+        }
+    }
+
+    /**
+     * Event listener for product-categories-update actions.
+     *
+     * @param CategoryEvent $event
+     * @return void
+     */
+    public function postCategoryUpdate(CategoryEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsCategoriesListener::postCategoryUpdate($event);
+        }
+    }
+
+    /**
+     * Event listener for product-categories-delete actions.
+     *
+     * @param CategoryEvent $event
+     * @return void
+     */
+    public function postCategoryDelete(CategoryEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsCategoriesListener::postCategoryDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for products-insert actions.
+     *
+     * @param ProductCreateEvent $event
+     * @return void
+     */
+    public function postProductInsert(ProductCreateEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsListener::postProductInsert($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for products-update actions.
+     *
+     * @param ProductUpdateEvent $event
+     * @return void
+     */
+    public function postProductUpdate(ProductUpdateEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsListener::postProductUpdate($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for products-delete actions.
+     *
+     * @param ProductEvent $event
+     * @return void
+     */
+    public function postProductDelete(ProductEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsListener::postProductDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for brand-insert actions.
+     *
+     * @param BrandEvent $event
+     * @return void
+     */
+    public function postBrandInsert(BrandEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsManufacturersListener::postBrandInsert($event);
+        }
+    }
+
+    /**
+     * Event listener for brand-update actions.
+     *
+     * @param BrandEvent $event
+     * @return void
+     */
+    public function postBrandUpdate(BrandEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsManufacturersListener::postBrandUpdate($event);
+        }
+    }
+
+    /**
+     * Event listener for brand-delete actions.
+     *
+     * @param BrandEvent $event
+     * @return void
+     */
+    public function postBrandDelete(BrandEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsManufacturersListener::postBrandDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for products-variations-insert actions.
+     *
+     * @param ProductSaleElementCreateEvent $event
+     * @return void
+     */
+    public function postProductSaleElementsInsert(ProductSaleElementCreateEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsVariationsListener::postProductSaleElementsInsert($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for products-variations-update actions.
+     *
+     * @param ProductSaleElementUpdateEvent $event
+     * @return void
+     */
+    public function postProductSaleElementsUpdate(ProductSaleElementUpdateEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsVariationsListener::postProductSaleElementsUpdate($event, $this->dispatcher);
+        }
+    }
+
+    /**
+     * Event listener for products-variations-delete actions.
+     *
+     * @param ProductSaleElementsEvent $event
+     * @return void
+     */
+    public function postProductSaleElementsDelete(ProductSaleElementsEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            ProductsVariationsListener::postProductSaleElementsDelete($event);
+        }
+    }
+
+    /**
+     * Event listener for coupon-insert actions.
+     *
+     * @param CouponEvent $event
+     * @return void
+     */
+    public function postCouponInsert(CouponEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            VouchersListener::postCouponInsert($event);
+        }
+    }
+
+    /**
+     * Event listener for coupon-update actions.
+     *
+     * @param CouponEvent $event
+     * @return void
+     */
+    public function postCouponUpdate(CouponEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            VouchersListener::postCouponUpdate($event);
+        }
+    }
+
+    /**
+     * Event listener for coupon-delete actions.
+     *
+     * @param CouponEvent $event
+     * @return void
+     */
+    public function postCouponDelete(CouponEvent $event): void
+    {
+        if (Utils::useRealTimeSynchronization()) {
+            VouchersListener::postCouponDelete($event);
+        }
+    }
 }

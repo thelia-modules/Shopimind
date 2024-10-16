@@ -12,7 +12,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once realpath(__DIR__.'/../').'/vendor-module/autoload.php';
+require_once dirname(__DIR__) . '/vendor-module/autoload.php';
 
 use Shopimind\Data\CustomersAddressesData;
 use Shopimind\lib\Utils;
@@ -24,8 +24,13 @@ class SyncCustomersAddresses
 {
     /**
      * Process synchronization for customers addresses.
+     *
+     * @param string $lastUpdate
+     * @param array|int $ids
+     * @param string $requestedBy
+     * @return array
      */
-    public static function processSyncCustomersAddresses($lastUpdate, $ids, $requestedBy): array
+    public static function processSyncCustomersAddresses(string $lastUpdate, array|int $ids, string $requestedBy): array
     {
         $customerAddressesIds = null;
         if (!empty($ids)) {
@@ -79,6 +84,7 @@ class SyncCustomersAddresses
     /**
      * Synchronizes customers addresses.
      *
+     * @param Request $request
      * @return void
      */
     public static function syncCustomersAddresses(Request $request): void

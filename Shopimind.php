@@ -21,21 +21,21 @@ use Thelia\Module\BaseModule;
 class Shopimind extends BaseModule
 {
     /** @var string */
-    const DOMAIN_NAME = 'shopimind';
-
+    public const DOMAIN_NAME = 'shopimind';
 
     /**
      * @return bool true to continue module activation, false to prevent it
      */
-    public function preActivation(ConnectionInterface $con = null)
+    public function preActivation(ConnectionInterface $con = null): bool
     {
-        if ( !self::getConfigValue('is_initialized', false) ) {
+        if (!self::getConfigValue('is_initialized', false)) {
             $database = new Database($con);
 
             $database->insertSql(null, [__DIR__.'/Config/TheliaMain.sql']);
 
             self::setConfigValue('is_initialized', true);
         }
+
         return true;
     }
 
@@ -47,16 +47,14 @@ class Shopimind extends BaseModule
     }
 
     /**
-     * Defines how services are loaded in your modules
-     *
-     * @param ServicesConfigurator $servicesConfigurator
+     * Defines how services are loaded in your modules.
      */
     public static function configureServices(ServicesConfigurator $servicesConfigurator): void
     {
         $servicesConfigurator->load(self::getModuleCode().'\\', __DIR__)
             ->exclude([
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()). "/I18n/*",
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()) . "/PassiveSynchronization/Scripts/*"
+                THELIA_MODULE_DIR.ucfirst(self::getModuleCode()).'/I18n/*',
+                THELIA_MODULE_DIR.ucfirst(self::getModuleCode()).'/PassiveSynchronization/Scripts/*',
             ])
             ->autowire(true)
             ->autoconfigure(true);
@@ -64,16 +62,12 @@ class Shopimind extends BaseModule
 
     /**
      * Execute sql files in Config/update/ folder named with module version (ex: 1.0.1.sql).
-     *
-     * @param $currentVersion
-     * @param $newVersion
-     * @param ConnectionInterface $con
      */
     public function update($currentVersion, $newVersion, ConnectionInterface $con = null): void
     {
         $updateDir = __DIR__.DS.'Config'.DS.'update';
 
-        if (! is_dir($updateDir)) {
+        if (!is_dir($updateDir)) {
             return;
         }
 

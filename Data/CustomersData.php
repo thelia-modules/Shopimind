@@ -21,6 +21,9 @@ class CustomersData
 {
     /**
      * Formats the customer data to match the Shopimind format.
+     *
+     * @param Customer $customer
+     * @return array
      */
     public static function formatCustomer(Customer $customer): array
     {
@@ -52,9 +55,8 @@ class CustomersData
     /**
      * Verifies whether a customer is subscribed to the newsletter.
      *
-     * @param string $customerEmail the customer's email address
-     *
-     * @return bool true if the customer is subscribed, false otherwise
+     * @param string $customerEmail
+     * @return bool
      */
     public static function isNewsletterSubscribed(string $customerEmail): bool
     {

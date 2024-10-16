@@ -11,8 +11,6 @@
         <title>Shopimind</title>
         <description>Relancer vos paniers abandonnés, contacter vos prospects, fidéliser vos clients. Shopimind vous permet d\'automatiser votre relation client et d\'augmenter votre chiffre d\'affaires.</description>
     </descriptive>
-    <!-- <logo></logo> -->
-    <!--<images-folder>images</images-folder>-->
     <languages>
         <language>en_US</language>
         <language>fr_FR</language>
@@ -25,14 +23,6 @@
         </author>
     </authors>
     <type>classic</type>
-    <!--
-    module dependencies
-    <required>
-        <module version="&gt;=0.1">Front</module>
-        <module version="~1.0">HookCart</module>
-        <module version="&gt;0.2">HookSearch</module>
-    </required>
-    -->
     <thelia>2.5.0</thelia>
     <stability>other</stability>
     <mandatory>0</mandatory>

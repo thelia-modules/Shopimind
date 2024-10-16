@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
 namespace Shopimind\Model;
 
@@ -8,7 +17,6 @@ use Thelia\Files\FileModelInterface;
 
 class Shopimind extends BaseShopimind implements FileModelInterface
 {
-
     public $apiId;
     public $apiPassword;
     public $nominativeReductions;
@@ -16,7 +24,7 @@ class Shopimind extends BaseShopimind implements FileModelInterface
     public $outOfStockProductDisabling;
     public $scriptTag;
 
-    public function setParentId($parentId)
+    public function setParentId($parentId): void
     {
         $this->setParent($parentId);
     }
@@ -31,7 +39,7 @@ class Shopimind extends BaseShopimind implements FileModelInterface
         return $this->getFileRelatedByFileId();
     }
 
-    public function setFile($file)
+    public function setFile($file): void
     {
         $this->setFileRelatedByFileId($file);
     }
@@ -41,27 +49,28 @@ class Shopimind extends BaseShopimind implements FileModelInterface
         return $this->getParentFile();
     }
 
-    public function getUpdateFormId()
+    public function getUpdateFormId(): void
     {
         // return 'carousel.image'; // Exemple, à adapter à votre besoin
     }
 
-    public function getUploadDir()
+    public function getUploadDir(): void
     {
         // Implémentation de la méthode getUploadDir
         // return '/var/www/thelia/web/assets'; // Exemple, à adapter à votre besoin
     }
 
-    public function getRedirectionUrl()
+    public function getRedirectionUrl(): void
     {
         // return '/admin/module/my_module'; // Exemple, à adapter à votre besoin
     }
 
-    public function getQueryInstance()
+    public function getQueryInstance(): void
     {
         // return self::query();
     }
-     public function setTitle($title)
+
+    public function setTitle($title): void
     {
         $this->setYourTitlePropertyHere($title);
     }
@@ -71,29 +80,28 @@ class Shopimind extends BaseShopimind implements FileModelInterface
         return $this->getYourTitlePropertyHere();
     }
 
-    public function setChapo($chapo)
+    public function setChapo($chapo): void
     {
         $this->setYourChapoPropertyHere($chapo);
     }
 
-    public function setDescription($description)
+    public function setDescription($description): void
     {
         $this->setYourDescriptionPropertyHere($description);
     }
 
-    public function setPostscriptum($postscriptum)
+    public function setPostscriptum($postscriptum): void
     {
         $this->setYourPostscriptumPropertyHere($postscriptum);
     }
 
-    public function setLocale($locale)
+    public function setLocale($locale): void
     {
         $this->setYourLocalePropertyHere($locale);
     }
 
-    public function setVisible($visible)
+    public function setVisible($visible): void
     {
         $this->setYourVisiblePropertyHere($visible);
     }
-    
 }

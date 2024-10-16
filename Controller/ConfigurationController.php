@@ -12,7 +12,7 @@
 
 namespace Shopimind\Controller;
 
-require_once __DIR__.'/../vendor-module/autoload.php';
+require_once \dirname(__DIR__).'/vendor-module/autoload.php';
 
 use Shopimind\lib\Utils;
 use Shopimind\Model\Shopimind;
@@ -33,7 +33,8 @@ class ConfigurationController extends BaseAdminController
     /**
      * Save configuration settings.
      *
-     * @param Request $request The request object
+     * @param Request $request
+     * @return RedirectResponse
      */
     public function saveConfiguration(Request $request): RedirectResponse
     {
@@ -42,12 +43,12 @@ class ConfigurationController extends BaseAdminController
         $data = $request->request->all('shopimind_form_shopimind_form');
         $apiId = $data['api-id'];
         $apiPassword = $data['api-password'];
-        $realTimeSynchronization = array_key_exists('real-time-synchronization', $data) ? 1 : 0;
-        $nominativeReductions = array_key_exists('nominative-reductions', $data) ? 1 : 0;
-        $cumulativeVouchers = array_key_exists('cumulative-vouchers', $data) ? 1 : 0;
-        $outOfStockProductDisabling = array_key_exists('out-of-stock-product-disabling', $data) ? 1 : 0;
-        $scriptTag = array_key_exists('script-tag', $data) ? 1 : 0;
-        $activeLog = array_key_exists('log', $data) ? 1 : 0;
+        $realTimeSynchronization = \array_key_exists('real-time-synchronization', $data) ? 1 : 0;
+        $nominativeReductions = \array_key_exists('nominative-reductions', $data) ? 1 : 0;
+        $cumulativeVouchers = \array_key_exists('cumulative-vouchers', $data) ? 1 : 0;
+        $outOfStockProductDisabling = \array_key_exists('out-of-stock-product-disabling', $data) ? 1 : 0;
+        $scriptTag = \array_key_exists('script-tag', $data) ? 1 : 0;
+        $activeLog = \array_key_exists('log', $data) ? 1 : 0;
 
         $headers = ['client-id' => $apiId];
 
@@ -83,27 +84,29 @@ class ConfigurationController extends BaseAdminController
 
     /**
      * Redirects to the configuration page.
+     *
+     * @return RedirectResponse
      */
     protected function redirectToConfigurationPage(): RedirectResponse
     {
-        Utils::log('products', 'passive synchronization', 'erreur desc');
-
         return new RedirectResponse(URL::getInstance()->absoluteUrl('/admin/module/Shopimind'));
     }
 
     /**
      * Connect the module to Shopimind.
+     *
+     * @return array
      */
-    public static function connectModule($auth)
+    public static function connectModule($auth): array
     {
         $currencyQuery = CurrencyQuery::create()->findOneByByDefault(1);
         if (empty($currencyQuery)) {
-            return '';
+            return [];
         }
 
         $langQuery = LangQuery::create()->findOneByByDefault(1);
         if (empty($langQuery)) {
-            return '';
+            return [];
         }
 
         $langsQuery = LangQuery::create()->filterByActive(1)->find();
