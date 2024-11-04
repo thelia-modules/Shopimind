@@ -91,5 +91,9 @@
     <route id="shopimind.sync.status.post" path="/shopimind/sync-status" methods="post">
         <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::updateSyncStatus</default>
     </route>
+
+    <route id="shopimind.sync.object-status.fail.post" path="/shopimind/sync-object-status/fail" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::setObjectSyncStatusToFailed</default>
+    </route>
     
 </routes>

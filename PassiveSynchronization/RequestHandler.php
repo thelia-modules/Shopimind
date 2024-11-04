@@ -124,7 +124,7 @@ class RequestHandler
     /**
      * Validate syncrhonize parameters.
      *
-     * @param array $params An array containing the customer creation parameters.
+     * @param array $params An array containing the parameters.
      */
     public static function validate( $params ) 
     {
