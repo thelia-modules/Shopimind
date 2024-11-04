@@ -10,6 +10,7 @@ use Thelia\Model\Base\LangQuery;
 use Shopimind\SdkShopimind\SpmVoucher;
 use Shopimind\Data\VouchersData;
 use Symfony\Component\HttpFoundation\Request;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncVouchers
 {
@@ -18,9 +19,11 @@ class SyncVouchers
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $requestedBy
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncVouchers( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncVouchers( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $vouchersIds = null;
         if ( !empty( $ids ) ) {
@@ -41,7 +44,27 @@ class SyncVouchers
             }
         }
 
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'vouchers' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -63,7 +86,7 @@ class SyncVouchers
 
         Utils::updateSynchronizationStatus( 'vouchers', 1 );
 
-        Utils::launchSynchronisation( 'vouchers', $lastUpdate, $vouchersIds, $requestedBy );
+        Utils::launchSynchronisation( 'vouchers', $lastUpdate, $vouchersIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -90,6 +113,8 @@ class SyncVouchers
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $langs = LangQuery::create()->filterByActive( 1 )->find();
             $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
@@ -137,6 +162,10 @@ class SyncVouchers
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmVoucher::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
+                    if ( !empty( $idShopAskSyncs ) ) {
+                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'vouchers', $response, count( $data ) );
+                    }
+
                     Utils::handleResponse( $response );
         
                     Utils::log( 'vouchers' , 'passive synchronization', json_encode( $response ) );
@@ -146,6 +175,13 @@ class SyncVouchers
         } catch (\Throwable $th) {
             Utils::log( 'vouchers' , 'passive synchronization' , $th->getMessage() );
         }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+            }
+
             Utils::log( 'vouchers', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'vouchers', 0 );
         }

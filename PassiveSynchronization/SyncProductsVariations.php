@@ -12,6 +12,7 @@ use Shopimind\SdkShopimind\SpmProductsVariations;
 use Shopimind\Data\ProductsVariationsData;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncProductsVariations extends AbstractController
 {
@@ -21,9 +22,11 @@ class SyncProductsVariations extends AbstractController
      *
      * @param string $lastUpdate
      * @param $ids
+     * @param $requestedBy
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncProductsVariations ( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncProductsVariations ( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $productsVariationsIds = null;
         if ( !empty( $ids ) ) {
@@ -44,7 +47,27 @@ class SyncProductsVariations extends AbstractController
             }
         }
 
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_variations' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -67,7 +90,7 @@ class SyncProductsVariations extends AbstractController
 
         Utils::updateSynchronizationStatus( 'products_variations', 1 );
 
-        Utils::launchSynchronisation( 'products-variations', $lastUpdate, $productsVariationsIds, $requestedBy );
+        Utils::launchSynchronisation( 'products-variations', $lastUpdate, $productsVariationsIds, $requestedBy, $idShopAskSyncs  );
 
         return [
             'success' => true,
@@ -94,6 +117,8 @@ class SyncProductsVariations extends AbstractController
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $langs = LangQuery::create()->filterByActive( 1 )->find();
 
@@ -137,6 +162,10 @@ class SyncProductsVariations extends AbstractController
                         $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                         $response = SpmProductsVariations::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
                     
+                        if ( !empty( $idShopAskSyncs ) ) {
+                            Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_variations', $response, count( $value ) );
+                        }
+
                         Utils::handleResponse( $response );
 
                         Utils::log( 'productsVariations' , 'passive synchronization', json_encode( $response ) );
@@ -147,9 +176,15 @@ class SyncProductsVariations extends AbstractController
         } catch (\Throwable $th) {
             Utils::log( 'productsVariations' , 'passive synchronization', $th->getMessage() );
         }  finally {
-            Utils::log( 'productsVariations', 'passive synchronization', 'finally', null);
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+            }
+
+            Utils::log( 'productsVariations', 'passive synchronization', 'finally', null );
             Utils::updateSynchronizationStatus( 'products_variations', 0 );
         }
-
     }
 }

@@ -12,6 +12,7 @@ use Thelia\Model\Base\LangQuery;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncProductsImages extends AbstractController
 {
@@ -20,9 +21,10 @@ class SyncProductsImages extends AbstractController
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncProductsImages( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncProductsImages( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $productsImagesIds = null;
         if ( !empty( $ids ) ) {
@@ -43,7 +45,27 @@ class SyncProductsImages extends AbstractController
             }
         }
 
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_images' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -65,7 +87,7 @@ class SyncProductsImages extends AbstractController
 
         Utils::updateSynchronizationStatus( 'products_images', 1 );
 
-        Utils::launchSynchronisation( 'products-images', $lastUpdate, $productsImagesIds, $requestedBy );
+        Utils::launchSynchronisation( 'products-images', $lastUpdate, $productsImagesIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -92,6 +114,8 @@ class SyncProductsImages extends AbstractController
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $langs = LangQuery::create()->filterByActive( 1 )->find();
 
@@ -135,6 +159,10 @@ class SyncProductsImages extends AbstractController
                         $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                         $response = SpmProductsImages::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
                     
+                        if ( !empty( $idShopAskSyncs ) ) {
+                            Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_images', $response, count( $value ) );
+                        }
+
                         Utils::handleResponse( $response );
         
                         Utils::log( 'productImage' , 'passive synchronization', json_encode( $response ) );
@@ -145,6 +173,13 @@ class SyncProductsImages extends AbstractController
         } catch (\Throwable $th) {
             Utils::log( 'productImage' , 'passive synchronization', $th->getMessage() );
         }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
+            }
+
             Utils::log( 'productImage', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'products_images', 0 );
         }

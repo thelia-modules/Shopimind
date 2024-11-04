@@ -23,26 +23,29 @@ class SpmCustomers
         $requestValidation = Utils::validateSpmRequest( $request );
         if ( !empty( $requestValidation ) ) return $requestValidation;
 
-        $body =  json_decode( $request->getContent(), true );
+        $content = $request->getContent();
+        parse_str($content, $body);
 
         $status = true;
         $message = "Customer created successfully.";
         $defaultLang = LangQuery::create()->findOneByByDefault(true)->getId();
-        
-        $errors = self::validate( $body );
+
+        $customerData = $body['customer'];
+        $errors = self::validate( $customerData );
+
         if ( !empty( $errors ) ) {
             return $errors;
         }
 
-        $email = $body['email'];
-        $firstName = $body['firstName'];
-        $lastName = $body['lastName'];
-        $langParam = ( array_key_exists('lang', $body ) ) ? $body['lang'] : '';
+        $email = $customerData['email'];
+        $firstName = $customerData['firstName'];
+        $lastName = $customerData['lastName'];
+        $langParam = ( array_key_exists('lang', $customerData ) ) ? $customerData['lang'] : '';
         $lang = LangQuery::create()->findOneByCode( $langParam );
         $langId = !empty($lang) ? $lang->getId() : $defaultLang;
         $local = !empty($lang ) ? $lang->getLocale() : LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $password = $body['password'];
-        $newsletter = ( array_key_exists('newsletter', $body ) ) ? $body['newsletter'] : 0;
+        $password = $customerData['password'];
+        $newsletter = ( array_key_exists('newsletter', $customerData ) ) ? $customerData['newsletter'] : 0;
 
         $emailExists = CustomerQuery::create()->filterByEmail($email)->exists();
 

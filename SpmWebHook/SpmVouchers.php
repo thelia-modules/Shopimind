@@ -10,6 +10,7 @@ use Thelia\Model\CurrencyQuery;
 use Thelia\Model\LangQuery;
 use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\lib\Utils;
+use Thelia\Model\CouponI18n;
 
 class SpmVouchers
 {
@@ -24,7 +25,10 @@ class SpmVouchers
         if ( !empty( $requestValidation ) ) return $requestValidation;
 
         $config = ShopimindQuery::create()->findOne();
-        $body =  json_decode( $request->getContent(), true );
+        $content = $request->getContent();
+        parse_str($content, $body);
+
+        // $body = json_decode( $content, true );
 
         $defaultCurrency = CurrencyQuery::create()->findOneByByDefault(true)->getCode();
         $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
@@ -53,14 +57,14 @@ class SpmVouchers
         $typeFormat = "";
         $effects = [];
         switch ( $type ) {
-            case 'percentage_reduction':
+            case 'percent':
                 $effects = [
                     'percentage' => $amount
                 ];
                 $typeFormat = "thelia.coupon.type.remove_x_percent";
                 break;
             
-            case 'amount_reduction':
+            case 'amount':
                 $effects = [
                     'amount' => $amount
                 ];
@@ -145,7 +149,8 @@ class SpmVouchers
             )
         );
 
-        $description = "";
+        $description = "Code de réduction";
+
         if ( !empty( $emails ) ) {
             foreach ($emails as $value) {
                 if ( array_key_exists('description', $value ) ) {
@@ -177,22 +182,35 @@ class SpmVouchers
         $coupon->setVersionCreatedBy( NULL );
         $coupon->setDescription( $description );
         $coupon->setShortDescription( $description );
-        $coupon->setTitle( $code );
+        $coupon->setTitle( $description );
         $coupon->setLocale( $defaultLocal );
 
         try {
             $coupon->save();
+
+            self::generateTranslation( $coupon, $description );
         } catch (\Throwable $th) {
-            $status = false;
-            $message = $th->getMessage();
+            return new JsonResponse([
+                'success' =>  false,
+                'message' => $th->getMessage(),
+            ]);
         }
 
-        $response = new JsonResponse([
-            'success' =>  $status,
-            'message' => $message,
-        ]);
+        $vouchersToReturn = array();
 
-        return $response;
+        if ( !empty( $emails ) ) {
+            foreach ($emails as $value) {
+                $vouchersToReturn[$value['email']] = array(
+                    'voucher_number' => $code,
+                    'voucher_date_limit' => $expirationDate,
+                );
+            }
+        }
+
+        return new JsonResponse([
+            'vouchers' =>  $vouchersToReturn,
+            'success' => true,
+        ]);
     }
 
     /**
@@ -229,6 +247,33 @@ class SpmVouchers
             ]);
     
             return $response;
+        }
+    }
+
+    /**
+     * Generate translation for coupon
+     *
+     * @param Coupon $coupon
+     * @param string $description
+     * @return void
+     */
+    public static function generateTranslation( Coupon $coupon, string $description )
+    {
+        $langsQuery = LangQuery::create()->filterByActive( 1 )->find();
+        foreach ( $langsQuery as $lang ) {
+            $translation = new CouponI18n();
+
+            $translation->setCoupon( $coupon );
+            $translation->setLocale( $lang->getLocale() );
+            $translation->setTitle( $description );
+            $translation->setShortDescription( $description );
+            $translation->setDescription( $description );
+
+            try {
+                $translation->save();
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
         }
     }
 }

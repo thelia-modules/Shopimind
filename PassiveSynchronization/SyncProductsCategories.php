@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Shopimind\lib\Utils;
 use Shopimind\Data\ProductsCategoriesData;
 use Shopimind\SdkShopimind\SpmProductsCategories;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncProductsCategories
 {
@@ -18,9 +19,10 @@ class SyncProductsCategories
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncProductsCategories( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncProductsCategories( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $productsCategoriesIds = null;
         if ( !empty( $ids ) ) {
@@ -41,7 +43,27 @@ class SyncProductsCategories
             }
         }
 
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_categories' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_categories', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_categories', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -63,7 +85,7 @@ class SyncProductsCategories
 
         Utils::updateSynchronizationStatus( 'products_categories', 1 );
 
-        Utils::launchSynchronisation( 'products-categories', $lastUpdate, $productsCategoriesIds, $requestedBy );
+        Utils::launchSynchronisation( 'products-categories', $lastUpdate, $productsCategoriesIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -90,6 +112,8 @@ class SyncProductsCategories
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $langs = LangQuery::create()->filterByActive( 1 )->find();
             $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
@@ -137,6 +161,10 @@ class SyncProductsCategories
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmProductsCategories::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
+                    if ( !empty( $idShopAskSyncs ) ) {
+                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_categories', $response, count( $data ) );
+                    }
+
                     Utils::handleResponse( $response );
         
                     Utils::log( 'productCategories' , 'passive synchronization', json_encode( $response ) );
@@ -147,6 +175,13 @@ class SyncProductsCategories
         } catch (\Throwable $th) {
             Utils::log( 'productCategories' , 'passive synchronization', $th->getMessage() );
         }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_categories', $objectStatus );
+            }
+
             Utils::log( 'productCategories', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'products_categories', 0 );
         }

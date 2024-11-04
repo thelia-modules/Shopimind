@@ -120,7 +120,6 @@ class ProductsVariationsData
 
         $defaultImage = ProductImageQuery::create()
                 ->filterByProductId( $idParam )
-                ->filterByVisible(true)
                 ->filterByPosition(1)
                 ->findOne();
     

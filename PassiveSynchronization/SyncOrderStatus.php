@@ -10,6 +10,7 @@ use Thelia\Model\Base\LangQuery;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmOrdersStatus;
 use Shopimind\Data\OrderStatusData;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncOrderStatus
 {
@@ -18,9 +19,10 @@ class SyncOrderStatus
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncOrderStatus( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncOrderStatus( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $orderStatuesesIds = null;
         if ( !empty( $ids ) ) {
@@ -41,7 +43,27 @@ class SyncOrderStatus
             }
         }
 
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'orders_statuses' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'orders_statuses', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'orders_statuses', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -63,7 +85,7 @@ class SyncOrderStatus
 
         Utils::updateSynchronizationStatus( 'orders_statuses', 1 );
 
-        Utils::launchSynchronisation( 'orders-statuses', $lastUpdate, $orderStatuesesIds, $requestedBy );
+        Utils::launchSynchronisation( 'orders-statuses', $lastUpdate, $orderStatuesesIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -90,6 +112,8 @@ class SyncOrderStatus
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $langs = LangQuery::create()->filterByActive( 1 )->find();
             $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
@@ -137,6 +161,10 @@ class SyncOrderStatus
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmOrdersStatus::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
+                    if ( !empty( $idShopAskSyncs ) ) {
+                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'orders_statuses', $response, count( $data ) );
+                    }
+
                     Utils::handleResponse( $response );
         
                     Utils::log( 'orderStatuses' , 'passive synchronization', json_encode( $response ) );
@@ -147,6 +175,13 @@ class SyncOrderStatus
         } catch (\Throwable $th) {
             Utils::log( 'orderStatuses' , 'passive synchronization', $th->getMessage() );
         }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'orders_statuses', $objectStatus );
+            }
+
             Utils::log( 'orderStatuses', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'orders_statuses', 0 );
         }

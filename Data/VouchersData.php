@@ -33,7 +33,7 @@ class VouchersData
             "voucher_id" => strval( $coupon->getId() ),
             "lang" => substr( $couponTranslated->getLocale()  , 0, 2 ),
             "code" => $coupon->getCode(),
-            "description" => self::getDescription( $couponTranslated, $couponDefault ),
+            "description" => self::getDescription( $couponTranslated, $couponDefault ) ?? 'Code de réduction',
             "started_at" => $coupon->getStartDate() ? $coupon->getStartDate()->format('Y-m-d\TH:i:s.u\Z') : $coupon->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
             "ended_at" => $coupon->getExpirationDate() ? $coupon->getExpirationDate()->format('Y-m-d\TH:i:s.u\Z') : null,
             "customer_id" => self::getIdCustomer( $coupon->getId() ),

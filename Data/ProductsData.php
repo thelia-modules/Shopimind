@@ -50,7 +50,7 @@ class ProductsData
             "category_ids" => self::formatCategoriesIds( $product->getProductCategories() ),
             "manufacturer_id" =>  ( !empty( $product->getBrandId() ) ) ? strval( $product->getBrandId( ) ) : null,
             "currency" => self::getCurrency( $product->getId() ),
-            "image_link" => self::getDefaultImage( $product->getId(), $dispatcher ) ?? "http://placehold.it/350x150", // TODO : fix it
+            "image_link" => self::getDefaultImage( $product->getId(), $dispatcher ) ?? "https://placehold.co/300x300", // TODO : fix it
             "price" => self::getPrice( $product->getId() ),
             "price_discount" => self::getPromoPrice( $product->getId() ),
             "quantity_remaining" => $quantity,
@@ -219,7 +219,6 @@ class ProductsData
     public static function getDefaultImage( int $productId, $dispatcher ){
         $defaultImage = ProductImageQuery::create()
             ->filterByProductId($productId)
-            ->filterByVisible(true)
             ->filterByPosition(1)
             ->findOne();
         
@@ -237,6 +236,7 @@ class ProductsData
                 return $url;
             } catch (\Throwable $th) {
                 //throw $th;
+                Utils::log('ImageProduct', 'Error', $th->getMessage(), $productId);
             }
         }
 

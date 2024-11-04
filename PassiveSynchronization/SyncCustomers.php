@@ -9,17 +9,21 @@ use Symfony\Component\HttpFoundation\Request;
 use Shopimind\Data\CustomersData;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmCustomers;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncCustomers
 {
+
     /**
      * Process synchronization for customers
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $requestedBy
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncCustomers( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncCustomers( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $customerIds = null;
         if ( !empty( $ids ) ) {
@@ -40,7 +44,24 @@ class SyncCustomers
             }
         }
 
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'customers' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -62,7 +83,7 @@ class SyncCustomers
 
         Utils::updateSynchronizationStatus( 'customers', 1 );
 
-        Utils::launchSynchronisation( 'customers', $lastUpdate, $customerIds, $requestedBy );
+        Utils::launchSynchronisation( 'customers', $lastUpdate, $customerIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -89,6 +110,8 @@ class SyncCustomers
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
+            
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
 
             $offset = 0;
             $limit = 20;
@@ -126,6 +149,10 @@ class SyncCustomers
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmCustomers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
+                    if ( !empty( $idShopAskSyncs ) ) {
+                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'customers', $response, count( $data ) );
+                    }
+
                     Utils::handleResponse( $response );
                     
                     Utils::log( 'customers', 'passive synchronization', json_encode( $response ) );
@@ -135,6 +162,13 @@ class SyncCustomers
         } catch (\Throwable $th) {
             Utils::log( 'customers' , 'passive synchronization', $th->getMessage() );
         } finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers', $objectStatus );
+            }
+
             Utils::log( 'customers', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'customers', 0 );
         }

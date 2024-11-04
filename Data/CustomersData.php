@@ -6,6 +6,8 @@ use Thelia\Model\NewsletterQuery;
 use Thelia\Model\Base\Customer;
 use Thelia\Model\AddressQuery;
 use Thelia\Model\LangQuery;
+use CustomerFamily\Model\Base\CustomerCustomerFamilyQuery;
+use Shopimind\lib\Utils;
 
 class CustomersData
 {
@@ -25,6 +27,12 @@ class CustomersData
         $langQuery = LangQuery::create()->findOneById( $customer->getLangId() );
         $lang = ( !empty( $langQuery ) && $langQuery->getCode() ) ? $langQuery->getCode() : $defaultLang->getCode();
 
+        $groupIds = null;
+        if ( Utils::isCustomerFamilyActive() ) {
+            $groupIds = CustomerCustomerFamilyQuery::create()->filterByCustomerId( $customer->getId() )->select('CustomerFamilyId')->find()->toArray();        
+            $groupIds = array_map( 'strval', $groupIds );
+        }
+
         return [
             "customer_id" => strval( $customer->getId() ),
             "email" => $customer->getEmail(),
@@ -35,7 +43,7 @@ class CustomersData
             "is_opt_in" => true,
             "is_newsletter_subscribed" => self::isNewsletterSubscribed( $customer->getEmail() ),
             "lang" => $lang,
-            "group_ids" => null,
+            "group_ids" => !empty( $groupIds ) ? $groupIds : null,
             "is_active" => ( bool ) $customer->getEnable(),
             "created_at" => $customer->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
             "updated_at" => $customer->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')

@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmNewsletterSubscribers;
 use Shopimind\Data\NewsletterSubscribersData;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncNewsletterSubscribers
 {
@@ -17,9 +18,10 @@ class SyncNewsletterSubscribers
      *
      * @param $lastUpdate
      * @param $ids
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncNewsletterSubscribers( $lastUpdate, $ids, $requestedBy ): array
+    public static function processSyncNewsletterSubscribers( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $newsletterSubscriberIds = null;
         if ( !empty( $ids ) ) {
@@ -40,13 +42,30 @@ class SyncNewsletterSubscribers
             }
         }
 
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'newsletter_subscribers' );
+            
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'newsletter_subscribers', $objectStatus );
+        }
+
         if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'newsletter_subscribers', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
             ];
         }
-
+        
         $synchronizationStatus = Utils::loadSynchronizationStatus();
         
         if (
@@ -62,7 +81,7 @@ class SyncNewsletterSubscribers
 
         Utils::updateSynchronizationStatus( 'newsletter_subscribers', 1 );
 
-        Utils::launchSynchronisation( 'newsletter-subscribers', $lastUpdate, $newsletterSubscriberIds, $requestedBy );
+        Utils::launchSynchronisation( 'newsletter-subscribers', $lastUpdate, $newsletterSubscriberIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -90,8 +109,10 @@ class SyncNewsletterSubscribers
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
 
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
+
             $offset = 0;
-            $limit = 1;
+            $limit = 20;
 
             $hasMore = true;
 
@@ -125,6 +146,10 @@ class SyncNewsletterSubscribers
 
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
                     $response = SpmNewsletterSubscribers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
+
+                    if ( !empty( $idShopAskSyncs ) ) {
+                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'newsletter_subscribers', $response, count( $data ) );
+                    }
                     
                     Utils::handleResponse( $response );
         
@@ -136,10 +161,15 @@ class SyncNewsletterSubscribers
         } catch (\Throwable $th) {
             Utils::log( 'newsletterSubscribers' , 'passive synchronization', $th->getMessage() );
         }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'newsletter_subscribers', $objectStatus );
+            }
+
             Utils::log( 'newsletterSubscribers', 'passive synchronization', 'finally', null);
             Utils::updateSynchronizationStatus( 'newsletter_subscribers', 0 );
         }
-
-        Utils::updateSynchronizationStatus( 'newsletter_subscribers', 0 );
     }
 }

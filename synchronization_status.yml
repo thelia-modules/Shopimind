@@ -1,6 +1,7 @@
 synchronization_status:
     customers: 0
     customers_addresses: 0
+    customers_groups: 0
     newsletter_subscribers: 0
     orders: 0
     orders_statuses: 0

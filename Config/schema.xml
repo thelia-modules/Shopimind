@@ -13,5 +13,13 @@
             <column name="is_connected" type="BOOLEAN" />
             <column name="log" type="BOOLEAN" />
         </table>
+
+        <table name="shopimind_sync_status">
+          <column name="id" type="BIGINT" primaryKey="true" autoIncrement="false" />
+          <column name="current_data_type" type="VARCHAR" size="50" />
+          <column name="global_state" type="VARCHAR" size="50"  />
+          <column name="first_call" type="TIMESTAMP" />
+          <column name="statuses" type="JSON" />
+        </table>
   <external-schema filename="local/config/schema.xml" referenceOnly="true" />
 </database>

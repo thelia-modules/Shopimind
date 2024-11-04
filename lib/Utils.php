@@ -8,6 +8,8 @@ use Shopimind\SdkShopimind\SpmUtils;
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Thelia\Model\ModuleQuery;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class Utils
 {
@@ -100,11 +102,21 @@ class Utils
         $config = ShopimindQuery::create()->findOne();
         
         if ( !empty( $config ) && ($config->getLog()) ) {
+            $logDir = THELIA_MODULE_DIR . '/Shopimind/logs';
+            $logFile = $logDir . '/module.log';
+
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0777, true);
+            }
+
+            if (!file_exists($logFile)) {
+                file_put_contents($logFile, '');
+            }
             $date = date('Y-m-d H:i:s');
             $id = !empty($objectId) ? 'id : [' .$objectId. ']' : '';
             $message = '- [' .$date. '] Synchronization : '.$action.' '.$object.' '.$id.' '.$response. PHP_EOL;
             
-            error_log( $message, 3, THELIA_MODULE_DIR. '/Shopimind/logs/module.log');
+            error_log( $message, 3, $logFile);
         }
     }
 
@@ -148,18 +160,20 @@ class Utils
 
         $config = ShopimindQuery::create()->findOne();
         $apiKey = $request->headers->get('api-spm-key');
-        if ( !( $apiKey === $config->getApiPassword() ) ) {
+        if ( !( $apiKey === sha1($config->getApiPassword()) ) ) {
             return new JsonResponse([
                 'success' =>  false,
                 'message' => 'Unauthorized.',
             ], 401);
         }
 
-        $body =  json_decode( $request->getContent(), true );
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        $content = $request->getContent();
+        parse_str($content, $body);
+
+        if (empty($body)) {
             return new JsonResponse([
-                'success' =>  false,
-                'message' => 'Invalid JSON.',
+                'success' => false,
+                'message' => 'Invalid form data.',
             ], 400);
         }
     }
@@ -170,7 +184,7 @@ class Utils
      *
      * @param string $controller
      */
-    public static function launchSynchronisation( $object, $lastUpdate, $ids = null, $requestedBy = null )
+    public static function launchSynchronisation( $object, $lastUpdate, $ids = null, $requestedBy = null, $idShopAskSyncs )
     {
         try {
             if ( function_exists('exec') && is_callable('exec') ) {
@@ -183,6 +197,7 @@ class Utils
                     'last_update' => $lastUpdate,
                     'ids' => $ids,
                     'requestedBy' => $requestedBy,
+                    'idShopAskSyncs' => $idShopAskSyncs,
                 ]);
 
                 // Construction de la commande curl pour exec
@@ -201,7 +216,7 @@ class Utils
         }
     }
 
-        /**
+    /**
      * Loads the synchronization status from a YAML file.
      *
      * @return array
@@ -215,6 +230,7 @@ class Utils
                     'synchronization_status' => [
                         'customers' => 0,
                         'customers_addresses' => 0,
+                        'customers_groups' => 0,
                         'newsletter_subscribers' => 0,
                         'orders' => 0,
                         'orders_statuses' => 0,
@@ -251,5 +267,51 @@ class Utils
 
         $yaml = Yaml::dump( $status, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
         file_put_contents( $synchronizationStatusFile, $yaml );
+    }
+
+    /**
+     * Check if the module customer family is active
+     *
+     * @return boolean
+     */
+    public static function isCustomerFamilyActive()
+    {
+        $module = ModuleQuery::create()->findOneByCode( 'CustomerFamily' );
+        
+        if ( !empty( $module ) ) {
+            if ( $module->getActivate() ) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Updates the count details in the status of a specific object type for synchronization
+     * The update depends on the value of $respons.
+     *
+     * @param $idShopAskSyncs
+     * @param $objectType
+     * @param $response
+     * @param $count
+     * @return void
+     */
+    public static function updateObjectStatusesCount( $idShopAskSyncs, $objectType, $response, $count )
+    {
+        $objectStatusDetails = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, $objectType );
+        if ( isset( $response['statusCode'] ) && $response['statusCode'] == 200 ) {
+            $objectStatus = [
+                "sent_successful_count" => $objectStatusDetails['sent_successful_count'] + $count,
+            ];
+        }else {
+            $objectStatus = [
+                "sent_failed_count" => $objectStatusDetails['sent_failed_count'] + $count,
+            ];
+        }
+
+        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, $objectType, $objectStatus );
     }
 }

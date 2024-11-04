@@ -1,5 +1,6 @@
 event_priorities:
   customers : 128
+  customers_groups: 128
   customers_addresses: 128
   newsletter_subscribers: 128
   order_coupon: 128

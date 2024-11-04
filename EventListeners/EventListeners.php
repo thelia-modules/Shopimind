@@ -22,8 +22,11 @@ use Thelia\Model\Event\ProductSaleElementsEvent;
 use Thelia\Core\Event\ProductSaleElement\ProductSaleElementUpdateEvent;
 use Thelia\Core\Event\ProductSaleElement\ProductSaleElementCreateEvent;
 use Thelia\Model\Event\CouponEvent;
+use CustomerFamily\Event\CustomerFamilyEvents;
+use CustomerFamily\Event\CustomerFamilyEvent;
 
 use Shopimind\EventListeners\CustomersListener;
+use Shopimind\EventListeners\CustomersGroupsListener;
 use Shopimind\EventListeners\CustomersAddressesListener;
 use Shopimind\EventListeners\NewsletterSubscribersListener;
 use Shopimind\EventListeners\OrderCouponListener;
@@ -50,6 +53,7 @@ class EventListeners implements EventSubscriberInterface
         $defaultPriority = 128;
 
         $customersPriority = $parameters['event_priorities']['customers'] ?? $defaultPriority;
+        $customersGroupsPriority = $parameters['event_priorities']['customers_groups'] ?? $defaultPriority;
         $custoersAddressesPriority = $parameters['event_priorities']['customers_addresses'] ?? $defaultPriority;
         $newsletterSubscirbersPriority = $parameters['event_priorities']['newsletter_subscribers'] ?? $defaultPriority;
         $orderCouponPriority = $parameters['event_priorities']['order_coupon'] ?? $defaultPriority;
@@ -62,7 +66,7 @@ class EventListeners implements EventSubscriberInterface
         $productsVariationsPriority = $parameters['event_priorities']['products_variations'] ?? $defaultPriority;
         $vouchersPriority = $parameters['event_priorities']['vouchers'] ?? $defaultPriority;
 
-        return [
+        $eventsListenner = [
             CustomerEvent::POST_INSERT => ['postCustomerInsert', $customersPriority],
             CustomerEvent::POST_UPDATE => ['postCustomerUpdate', $customersPriority],
             CustomerEvent::POST_DELETE => ['postCustomerDelete', $customersPriority],
@@ -98,6 +102,18 @@ class EventListeners implements EventSubscriberInterface
             CouponEvent::POST_UPDATE => ['postCouponUpdate', $vouchersPriority],
             CouponEvent::POST_DELETE => ['postCouponDelete', $vouchersPriority],
         ];
+
+        if ( Utils::isCustomerFamilyActive() ) {
+            $customersGroupsListener = [
+                CustomerFamilyEvents::CUSTOMER_FAMILY_CREATE => ['postCustomerGroupInsert', $customersGroupsPriority],
+                CustomerFamilyEvents::CUSTOMER_FAMILY_UPDATE => ['postCustomerGroupUpdate', $customersGroupsPriority],
+                CustomerFamilyEvents::CUSTOMER_FAMILY_DELETE => ['postCustomerGroupDelete', $customersGroupsPriority],    
+            ];
+
+            $eventsListenner = array_merge( $eventsListenner, $customersGroupsListener );
+        }
+
+        return $eventsListenner;
     }
 
     /**
@@ -122,6 +138,31 @@ class EventListeners implements EventSubscriberInterface
     {
         if ( Utils::useRealTimeSynchronization() ){
             CustomersListener::postCustomerDelete( $event );
+        }
+    }
+
+    /**
+     * Event listener for customer-family-related actions.
+     * 
+     */
+    public function postCustomerGroupInsert(CustomerFamilyEvent $event)
+    {
+        if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
+            CustomersGroupsListener::postCustomerGroupInsert( $event );
+        }
+    }
+
+    public function postCustomerGroupUpdate(CustomerFamilyEvent $event)
+    {
+        if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
+            CustomersGroupsListener::postCustomerGroupUpdate( $event );
+        }
+    }
+
+    public function postCustomerGroupDelete(CustomerFamilyEvent $event)
+    {
+        if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
+            CustomersGroupsListener::postCustomerGroupDelete( $event );
         }
     }
 
