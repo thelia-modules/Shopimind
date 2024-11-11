@@ -50,6 +50,12 @@ class SyncVouchers
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'vouchers' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'vouchers' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -127,16 +133,34 @@ class SyncVouchers
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $vouchersIds ) ) {
-                        $coupons = CouponQuery::create()->offset( $offset )->limit( $limit )->find();
+                        $coupons = CouponQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }else {
-                        $coupons = CouponQuery::create()->filterById( $vouchersIds )->offset( $offset )->limit( $limit )->find();
+                        $coupons = CouponQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $vouchersIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $vouchersIds ) ) {
-                        $coupons = CouponQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $coupons = CouponQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $coupons = CouponQuery::create()->filterById( $vouchersIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );                        
+                        $coupons = CouponQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $vouchersIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );                        
                     }
                 }
         
@@ -163,7 +187,14 @@ class SyncVouchers
                     $response = SpmVoucher::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'vouchers', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'vouchers', $response, count( $data ) );
+
+                        $lastObject = end( $data );
+                        $lastObjectUpdate = $lastObject['updated_at'];
+                        $objectStatus = [
+                            "last_object_update" => $lastObjectUpdate,
+                        ];
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );  
                     }
 
                     Utils::handleResponse( $response );

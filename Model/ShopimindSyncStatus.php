@@ -48,10 +48,12 @@ class ShopimindSyncStatus extends BaseShopimindSyncStatus
         if ( !empty( $syncStatus ) ) {
             $syncStatus->setCurrentDataType( $currentDataType );
         }else {
+            $currentDateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+
             $syncStatus = new ShopimindSyncStatus();
             $syncStatus->setId( $idShopAskSyncs );
             $syncStatus->setCurrentDataType( $currentDataType );
-            $syncStatus->setFirstCall( new \DateTime('now') );
+            $syncStatus->setFirstCall( $currentDateTime );
             $syncStatus->setGlobalState( 'in_progress' );
             $syncStatus->setStatuses( self::generateObjectStatuses() );
         }
@@ -74,12 +76,39 @@ class ShopimindSyncStatus extends BaseShopimindSyncStatus
                 'total_objects_count' => 0,
                 'sent_successful_count' => 0,
                 'sent_failed_count' => 0,
-                'last_update' => null
+                'last_sync_update' => null,
+                'last_object_update' => null,
             ];
         }
 
         return $objectStatuses;
     } 
+
+    /**
+     * Updates the count details in the status of a specific object type for synchronization
+     * The update depends on the value of $respons.
+     *
+     * @param $idShopAskSyncs
+     * @param $objectType
+     * @param $response
+     * @param $count
+     * @return void
+     */
+    public static function updateObjectStatusesCount( $idShopAskSyncs, $objectType, $response, $count )
+    {
+        $objectStatusDetails = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, $objectType );
+        if ( isset( $response['statusCode'] ) && $response['statusCode'] == 200 ) {
+            $objectStatus = [
+                "sent_successful_count" => $objectStatusDetails['sent_successful_count'] + $count,
+            ];
+        }else {
+            $objectStatus = [
+                "sent_failed_count" => $objectStatusDetails['sent_failed_count'] + $count,
+            ];
+        }
+
+        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, $objectType, $objectStatus );
+    }
 
     /**
      * Update object statuses
@@ -90,8 +119,8 @@ class ShopimindSyncStatus extends BaseShopimindSyncStatus
      */
     public static function updateObjectStatuses( $idShopAskSyncs, $objectType, $newData )
     {
-        if ( !in_array( $objectType, self::OBJECT_TYPES ) ) return; //TODO
-        if ( empty( $newData ) || !is_array( $newData ) ) return; //TODO
+        if ( !in_array( $objectType, self::OBJECT_TYPES ) ) return;
+        if ( empty( $newData ) || !is_array( $newData ) ) return;
 
         $syncStatus = ShopimindSyncStatusQuery::create()->findOneById( $idShopAskSyncs );
         if ( !empty( $syncStatus ) ) {
@@ -114,8 +143,12 @@ class ShopimindSyncStatus extends BaseShopimindSyncStatus
                 $newObjectStatuses[$objectType]['sent_failed_count'] = $newData['sent_failed_count'];
             }
 
-            $currentDateTime = new \DateTime();
-            $newObjectStatuses[$objectType]['last_update'] = $currentDateTime->format('Y-m-d\TH:i:s.u\Z');
+            if ( isset( $newData['last_object_update'] ) && !empty( $newData['last_object_update'] ) ) {
+                $newObjectStatuses[$objectType]['last_object_update'] = $newData['last_object_update'];
+            }
+
+            $currentDateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+            $newObjectStatuses[$objectType]['last_sync_update'] = $currentDateTime->format('Y-m-d\TH:i:s.u\Z');
         
             $syncStatus->setStatuses( $newObjectStatuses );
 

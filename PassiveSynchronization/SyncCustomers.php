@@ -47,6 +47,12 @@ class SyncCustomers
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'customers' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'customers' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -121,16 +127,34 @@ class SyncCustomers
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $customerIds ) ) {
-                        $customers = CustomerQuery::create()->offset( $offset )->limit( $limit )->find();
+                        $customers = CustomerQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }else {
-                        $customers = CustomerQuery::create()->filterById( $customerIds )->offset( $offset )->limit( $limit )->find();
+                        $customers = CustomerQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $customerIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $customerIds ) ) {
-                        $customers = CustomerQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $customers = CustomerQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $customers = CustomerQuery::create()->filterById( $customerIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $customers = CustomerQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $customerIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
         
@@ -150,7 +174,14 @@ class SyncCustomers
                     $response = SpmCustomers::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'customers', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'customers', $response, count( $data ) );
+
+                        $lastObject = end( $data );
+                        $lastObjectUpdate = $lastObject['updated_at'];
+                        $objectStatus = [
+                            "last_object_update" => $lastObjectUpdate,
+                        ];
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers', $objectStatus );        
                     }
 
                     Utils::handleResponse( $response );

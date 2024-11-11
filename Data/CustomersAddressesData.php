@@ -27,7 +27,9 @@ class CustomersAddressesData
             "postal_code" => $address->getZipcode() ?? '',
             "city" => $address->getCity() ?? '',
             "country" => !empty( $country ) ? $country->getTitle() : '',
-            "is_active" => true
+            "is_active" => true,
+            "created_at" => $address->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
+            'updated_at' => $address->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
         ];
 
         return $data;

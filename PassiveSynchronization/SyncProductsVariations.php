@@ -53,6 +53,12 @@ class SyncProductsVariations extends AbstractController
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_variations' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_variations' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -130,16 +136,38 @@ class SyncProductsVariations extends AbstractController
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $productsVariationsIds ) ) {
-                        $productsVariations = ProductSaleElementsQuery::create()->offset( $offset )->limit( $limit )->orderBy('product_id')->find();
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
                     }else {
-                        $productsVariations = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->offset( $offset )->limit( $limit )->orderBy('product_id')->find();
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsVariationsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $productsVariationsIds ) ) {
-                        $productsVariations = ProductSaleElementsQuery::create()->offset( $offset )->limit( $limit )->orderBy('product_id')->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $productsVariations = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->offset( $offset )->limit( $limit )->orderBy('product_id')->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsVariationsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
 
@@ -163,7 +191,14 @@ class SyncProductsVariations extends AbstractController
                         $response = SpmProductsVariations::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
                     
                         if ( !empty( $idShopAskSyncs ) ) {
-                            Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_variations', $response, count( $value ) );
+                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_variations', $response, count( $value ) );
+
+                            $lastObject = end( $value );
+                            $lastObjectUpdate = $lastObject['updated_at'];
+                            $objectStatus = [
+                                "last_object_update" => $lastObjectUpdate,
+                            ];
+                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );  
                         }
 
                         Utils::handleResponse( $response );

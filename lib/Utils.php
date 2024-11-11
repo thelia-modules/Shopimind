@@ -9,7 +9,6 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Thelia\Model\ModuleQuery;
-use Shopimind\Model\ShopimindSyncStatus;
 
 class Utils
 {
@@ -287,31 +286,5 @@ class Utils
         } else {
             return false;
         }
-    }
-
-    /**
-     * Updates the count details in the status of a specific object type for synchronization
-     * The update depends on the value of $respons.
-     *
-     * @param $idShopAskSyncs
-     * @param $objectType
-     * @param $response
-     * @param $count
-     * @return void
-     */
-    public static function updateObjectStatusesCount( $idShopAskSyncs, $objectType, $response, $count )
-    {
-        $objectStatusDetails = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, $objectType );
-        if ( isset( $response['statusCode'] ) && $response['statusCode'] == 200 ) {
-            $objectStatus = [
-                "sent_successful_count" => $objectStatusDetails['sent_successful_count'] + $count,
-            ];
-        }else {
-            $objectStatus = [
-                "sent_failed_count" => $objectStatusDetails['sent_failed_count'] + $count,
-            ];
-        }
-
-        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, $objectType, $objectStatus );
     }
 }

@@ -49,6 +49,12 @@ class SyncOrderStatus
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'orders_statuses' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'orders_statuses' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -126,16 +132,34 @@ class SyncOrderStatus
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $orderStatuesesIds ) ) {
-                        $ordersStatuses = OrderStatusQuery::create()->offset( $offset )->limit( $limit )->find();
+                        $ordersStatuses = OrderStatusQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }else {
-                        $ordersStatuses = OrderStatusQuery::create()->filterById( $orderStatuesesIds )->offset( $offset )->limit( $limit )->find();
+                        $ordersStatuses = OrderStatusQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $orderStatuesesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $orderStatuesesIds ) ) {
-                        $ordersStatuses = OrderStatusQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $ordersStatuses = OrderStatusQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $ordersStatuses = OrderStatusQuery::create()->filterById( $orderStatuesesIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $ordersStatuses = OrderStatusQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $orderStatuesesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
         
@@ -162,14 +186,20 @@ class SyncOrderStatus
                     $response = SpmOrdersStatus::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'orders_statuses', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'orders_statuses', $response, count( $data ) );
+
+                        $lastObject = end( $data );
+                        $lastObjectUpdate = $lastObject['updated_at'];
+                        $objectStatus = [
+                            "last_object_update" => $lastObjectUpdate,
+                        ];
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'orders_statuses', $objectStatus );  
                     }
 
                     Utils::handleResponse( $response );
         
                     Utils::log( 'orderStatuses' , 'passive synchronization', json_encode( $response ) );
                 }
-        
             } while ( $hasMore );
         
         } catch (\Throwable $th) {

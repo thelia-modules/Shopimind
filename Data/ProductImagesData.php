@@ -62,6 +62,8 @@ class ProductImagesData
                 'lang' => $lang->getCode(),
                 'url' => $url,
                 'is_default' => ( $productImage->getPosition() == 1 ) ? true : false,
+                'created_at' => $productImage->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
+                'updated_at' => $productImage->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
             ];
         }
 

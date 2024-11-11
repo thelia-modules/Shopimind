@@ -56,7 +56,9 @@ class ProductsVariationsData
             "price" => self::getPrice( $productVariation->getId() ),
             "price_discount" => self::getPromoPrice( $productVariation->getId() ),
             "quantity_remaining" => $productVariation->getQuantity() ?? 0,
-            "is_default" => ( bool ) $productVariation->getIsDefault()
+            "is_default" => ( bool ) $productVariation->getIsDefault(),
+            "created_at" => $productVariation->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
+            "updated_at" => $productVariation->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
         ];
     }
 

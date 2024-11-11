@@ -51,6 +51,12 @@ class SyncProductsImages extends AbstractController
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_images' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_images' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -127,16 +133,38 @@ class SyncProductsImages extends AbstractController
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $productsImagesIds ) ) {
-                        $productImages = ProductImageQuery::create()->offset( $offset )->limit( $limit )->orderBy('product_id')->find();
+                        $productImages = ProductImageQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
                     }else {
-                        $productImages = ProductImageQuery::create()->filterById( $productsImagesIds )->offset( $offset )->limit( $limit )->orderBy('product_id')->find();
+                        $productImages = ProductImageQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsImagesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $productsImagesIds ) ) {
-                        $productImages = ProductImageQuery::create()->offset( $offset )->limit( $limit )->orderBy('product_id')->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $productImages = ProductImageQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $productImages = ProductImageQuery::create()->filterById( $productsImagesIds )->offset( $offset )->limit( $limit )->orderBy('product_id')->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $productImages = ProductImageQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsImagesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
         
@@ -160,12 +188,19 @@ class SyncProductsImages extends AbstractController
                         $response = SpmProductsImages::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
                     
                         if ( !empty( $idShopAskSyncs ) ) {
-                            Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_images', $response, count( $value ) );
+                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_images', $response, count( $value ) );
+
+                            $lastObject = end( $value );
+                            $lastObjectUpdate = $lastObject['updated_at'];
+                            $objectStatus = [
+                                "last_object_update" => $lastObjectUpdate,
+                            ];
+                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );  
                         }
 
                         Utils::handleResponse( $response );
         
-                        Utils::log( 'productImage' , 'passive synchronization', json_encode( $response ) );
+                        Utils::log( 'productImage' , 'passive synchronization', json_encode( $value ) );
                     }
                 }
             } while ( $hasMore );

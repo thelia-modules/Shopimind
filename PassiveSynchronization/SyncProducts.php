@@ -50,10 +50,16 @@ class SyncProducts extends AbstractController
 
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products' );
-            
+
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
-                "total_objects_count" => $count,
+                "total_objects_count" => $count + $oldCount,
             ];
             ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );
         }
@@ -128,16 +134,34 @@ class SyncProducts extends AbstractController
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $productsIds ) ) {
-                        $products = ProductQuery::create()->offset( $offset )->limit( $limit )->find();
+                        $products = ProductQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }else {
-                        $products = ProductQuery::create()->filterById( $productsIds )->offset( $offset )->limit( $limit )->find();
+                        $products = ProductQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $productsIds ) ) {
-                        $products = ProductQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $products = ProductQuery::create()
+                            ->orderByUpdatedAt()    
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $products = ProductQuery::create()->filterById( $productsIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $products = ProductQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
         
@@ -164,13 +188,21 @@ class SyncProducts extends AbstractController
                     $response = SpmProducts::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products', $response, count( $data ) );
+
+                        $lastObject = end( $data );
+                        $lastObjectUpdate = $lastObject['updated_at'];
+                        $objectStatus = [
+                            "last_object_update" => $lastObjectUpdate,
+                        ];
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );  
                     }
 
                     Utils::handleResponse( $response );
         
                     Utils::log( 'products' , 'passive synchronization' , json_encode( $response ) );
                 }
+
             } while ( $hasMore );
         
         } catch (\Throwable $th) {

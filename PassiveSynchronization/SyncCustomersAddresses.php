@@ -45,6 +45,12 @@ class SyncCustomersAddresses
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'customers_addresses' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'customers_addresses' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -119,16 +125,38 @@ class SyncCustomersAddresses
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $customerAddressesIds ) ) {
-                        $customersAddresses = AddressQuery::create()->offset( $offset )->limit( $limit )->orderBy('customer_id')->find();
+                        $customersAddresses = AddressQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('customer_id')
+                            ->find();
                     }else {
-                        $customersAddresses = AddressQuery::create()->filterById( $customerAddressesIds )->offset( $offset )->limit( $limit )->orderBy('customer_id')->find();                        
+                        $customersAddresses = AddressQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $customerAddressesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('customer_id')
+                            ->find();                        
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $customerAddressesIds ) ) {
-                        $customersAddresses = AddressQuery::create()->offset( $offset )->limit( $limit )->orderBy('customer_id')->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $customersAddresses = AddressQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('customer_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $customersAddresses = AddressQuery::create()->filterById( $customerAddressesIds )->offset( $offset )->limit( $limit )->orderBy('customer_id')->filterByUpdatedAt( $lastUpdate, '>=' );                        
+                        $customersAddresses = AddressQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $customerAddressesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('customer_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );                        
                     }
                 }
         
@@ -150,7 +178,14 @@ class SyncCustomersAddresses
                         $response = SpmCustomersAddresses::bulkSave( Utils::getAuth( $requestHeaders ), $customerId, $value );
                         
                         if ( !empty( $idShopAskSyncs ) ) {
-                            Utils::updateObjectStatusesCount( $idShopAskSyncs, 'customers_addresses', $response, count( $value ) );
+                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'customers_addresses', $response, count( $value ) );
+
+                            $lastObject = end( $value );
+                            $lastObjectUpdate = $lastObject['updated_at'];
+                            $objectStatus = [
+                                "last_object_update" => $lastObjectUpdate,
+                            ];
+                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );  
                         }
 
                         Utils::handleResponse( $response );

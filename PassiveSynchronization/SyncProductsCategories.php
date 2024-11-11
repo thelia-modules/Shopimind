@@ -49,6 +49,12 @@ class SyncProductsCategories
         if ( !empty( $idShopAskSyncs ) ) {
             ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_categories' );
             
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_categories' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
             $objectStatus = [
                 "status" => "in_progress",
                 "total_objects_count" => $count,
@@ -126,16 +132,34 @@ class SyncProductsCategories
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $productsCategoriesIds ) ) {
-                        $categories = CategoryQuery::create()->offset( $offset )->limit( $limit )->find();
+                        $categories = CategoryQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }else {
-                        $categories = CategoryQuery::create()->filterById( $productsCategoriesIds )->offset( $offset )->limit( $limit )->find();
+                        $categories = CategoryQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsCategoriesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->find();
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $productsCategoriesIds ) ) {
-                        $categories = CategoryQuery::create()->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $categories = CategoryQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $categories = CategoryQuery::create()->filterById( $productsCategoriesIds )->offset( $offset )->limit( $limit )->filterByUpdatedAt( $lastUpdate, '>=' );
+                        $categories = CategoryQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsCategoriesIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
         
@@ -162,14 +186,20 @@ class SyncProductsCategories
                     $response = SpmProductsCategories::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        Utils::updateObjectStatusesCount( $idShopAskSyncs, 'products_categories', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_categories', $response, count( $data ) );
+
+                        $lastObject = end( $data );
+                        $lastObjectUpdate = $lastObject['updated_at'];
+                        $objectStatus = [
+                            "last_object_update" => $lastObjectUpdate,
+                        ];
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_categories', $objectStatus );  
                     }
 
                     Utils::handleResponse( $response );
         
                     Utils::log( 'productCategories' , 'passive synchronization', json_encode( $response ) );
                 }
-        
             } while ( $hasMore );
         
         } catch (\Throwable $th) {
