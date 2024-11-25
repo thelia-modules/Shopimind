@@ -28,8 +28,6 @@ class SpmVouchers
         $content = $request->getContent();
         parse_str($content, $body);
 
-        // $body = json_decode( $content, true );
-
         $defaultCurrency = CurrencyQuery::create()->findOneByByDefault(true)->getCode();
         $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
 
@@ -168,13 +166,13 @@ class SpmVouchers
         $coupon->setIsEnabled( 1 );
         $coupon->setStartDate( $startDate );
         $coupon->setExpirationDate( $expirationDate );
-        $coupon->setMaxUsage( -1 );
+        $coupon->setMaxUsage( 1 );
         $coupon->setIsCumulative( $isCumulative );
         $coupon->setIsRemovingPostage( $isRemovingPostage ); 
         $coupon->setIsAvailableOnSpecialOffers( 0 );
         $coupon->setIsUsed( 0 );
         $coupon->setSerializedConditions( base64_encode( json_encode( $condition ) ) );
-        $coupon->setPerCustomerUsageCount( 0 );
+        $coupon->setPerCustomerUsageCount( 1 );
         $coupon->setCreatedAt( new \DateTime() );
         $coupon->setUpdatedAt( new \DateTime() );
         $coupon->setVersion( 0 );
