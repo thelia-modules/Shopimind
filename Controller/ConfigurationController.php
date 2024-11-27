@@ -115,7 +115,7 @@ class ConfigurationController extends BaseAdminController
             'timezone' => $timezone,
             'url_client' => $urlClient,
             'ecommerce_version' => reset( $ecommerce_version ),
-            'module_version' => '1.0.0'
+            'module_version' => '1.0.1'
         ];
         
         $response = SpmShopConnection::saveConfiguration( $auth, $config );
