@@ -39,6 +39,10 @@
         <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomers::syncCustomers</default>
     </route>
 
+    <route id="shopimind.sync.customers-groups" path="/shopimind/sync-customers-groups" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomersGroups::syncCustomersGroups</default>
+    </route>
+
     <route id="shopimind.sync.customers-addresses" path="/shopimind/sync-customers-addresses" methods="post"> 
         <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomersAddresses::syncCustomersAddresses</default>
     </route>
@@ -78,4 +82,18 @@
     <route id="shopimind.sync.vouchers" path="/shopimind/sync-vouchers" methods="post">
         <default key="_controller">Shopimind\PassiveSynchronization\SyncVouchers::syncVouchers</default>
     </route>
+    
+    <!-- sync-status -->
+    <route id="shopimind.sync.status" path="/shopimind/sync-status" methods="get">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::getSyncStatus</default>
+    </route>
+
+    <route id="shopimind.sync.status.post" path="/shopimind/sync-status" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::updateSyncStatus</default>
+    </route>
+
+    <route id="shopimind.sync.object-status.fail.post" path="/shopimind/sync-object-status/fail" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::setObjectSyncStatusToFailed</default>
+    </route>
+    
 </routes>

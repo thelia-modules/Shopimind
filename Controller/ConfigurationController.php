@@ -1,60 +1,49 @@
 <?php
 
-/*
- * This file is part of the Thelia package.
- * http://www.thelia.net
- *
- * (c) OpenStudio <info@thelia.net>
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
 namespace Shopimind\Controller;
 
-require_once \dirname(__DIR__).'/vendor-module/autoload.php';
+require_once __DIR__ . '/../vendor-module/autoload.php';
 
-use Shopimind\lib\Utils;
 use Shopimind\Model\Shopimind;
 use Shopimind\Model\ShopimindQuery;
-use Shopimind\SdkShopimind\SpmShopConnection;
-use Shopimind\SdkShopimind\SpmUtils;
+use Thelia\Controller\Admin\BaseAdminController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Thelia\Tools\URL;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Thelia\Controller\Admin\BaseAdminController;
+use Shopimind\SdkShopimind\SpmShopConnection;
 use Thelia\Model\Base\ConfigQuery;
 use Thelia\Model\Base\CurrencyQuery;
 use Thelia\Model\Base\LangQuery;
-use Thelia\Tools\URL;
+use Shopimind\SdkShopimind\SpmUtils;
 
 class ConfigurationController extends BaseAdminController
 {
     /**
      * Save configuration settings.
      *
-     * @param Request $request
-     * @return RedirectResponse
+     * @param Request $request The request object.
      */
-    public function saveConfiguration(Request $request): RedirectResponse
+    public function saveConfiguration( Request $request )
     {
         $response = $this->redirectToConfigurationPage();
 
-        $data = $request->request->all('shopimind_form_shopimind_form');
+        $data = $request->request->all( 'shopimind_form_shopimind_form' );
         $apiId = $data['api-id'];
         $apiPassword = $data['api-password'];
-        $realTimeSynchronization = \array_key_exists('real-time-synchronization', $data) ? 1 : 0;
-        $nominativeReductions = \array_key_exists('nominative-reductions', $data) ? 1 : 0;
-        $cumulativeVouchers = \array_key_exists('cumulative-vouchers', $data) ? 1 : 0;
-        $outOfStockProductDisabling = \array_key_exists('out-of-stock-product-disabling', $data) ? 1 : 0;
-        $scriptTag = \array_key_exists('script-tag', $data) ? 1 : 0;
-        $activeLog = \array_key_exists('log', $data) ? 1 : 0;
+        $realTimeSynchronization = array_key_exists('real-time-synchronization', $data) ? 1 : 0;
+        $nominativeReductions = array_key_exists('nominative-reductions', $data) ? 1 : 0;
+        $cumulativeVouchers = array_key_exists('cumulative-vouchers', $data) ? 1 : 0;
+        $outOfStockProductDisabling = array_key_exists('out-of-stock-product-disabling', $data) ? 1 : 0;
+        $scriptTag = array_key_exists('script-tag', $data) ? 1 : 0;
+        $activeLog = array_key_exists('log', $data) ? 1 : 0;
 
-        $headers = ['client-id' => $apiId];
+        $headers = [ 'client-id' => $apiId ];
 
-        $auth = SpmUtils::getClient('v1', $apiPassword, $headers);
+        $auth = SpmUtils::getClient( 'v1', $apiPassword, $headers );
 
-        $connection = self::connectModule($auth);
+        $connection = self::connectModule( $auth );
+
 
         $session = new Session();
         $config = new Shopimind();
@@ -64,12 +53,13 @@ class ConfigurationController extends BaseAdminController
         $config->setOutOfStockProductDisabling($outOfStockProductDisabling);
         $config->setScriptTag($scriptTag);
         $config->setLog($activeLog);
-        if (isset($connection['statusCode']) && ($connection['statusCode'] == 200)) {
+
+        if ( isset( $connection['statusCode'] ) && ( $connection['statusCode'] == 200 ) ) {
             $config->setApiId($apiId);
             $config->setApiPassword($apiPassword);
             $config->setIsConnected(true);
             $session->getFlashBag()->add('success', 'Module connected to Shopimind.');
-        } else {
+        }else {
             $config->setApiId('');
             $config->setApiPassword('');
             $config->setIsConnected(false);
@@ -85,42 +75,38 @@ class ConfigurationController extends BaseAdminController
     /**
      * Redirects to the configuration page.
      *
-     * @return RedirectResponse
+     * @return void
      */
-    protected function redirectToConfigurationPage(): RedirectResponse
+    protected function redirectToConfigurationPage()
     {
         return new RedirectResponse(URL::getInstance()->absoluteUrl('/admin/module/Shopimind'));
     }
 
     /**
-     * Connect the module to Shopimind.
+     * Connect the module to Shopimind
      *
-     * @return array
+     * @param  $auth
      */
-    public static function connectModule($auth): array
+    public static function connectModule( $auth )
     {
-        $currencyQuery = CurrencyQuery::create()->findOneByByDefault(1);
-        if (empty($currencyQuery)) {
-            return [];
-        }
+        $currencyQuery = CurrencyQuery::create()->findOneByByDefault( 1 );
+        if ( empty( $currencyQuery ) ) return '';
 
-        $langQuery = LangQuery::create()->findOneByByDefault(1);
-        if (empty($langQuery)) {
-            return [];
-        }
+        $langQuery = LangQuery::create()->findOneByByDefault( 1 );
+        if ( empty( $langQuery ) ) return '';
 
-        $langsQuery = LangQuery::create()->filterByActive(1)->find();
+        $langsQuery = LangQuery::create()->filterByActive( 1 )->find();
         $langs = [];
-        foreach ($langsQuery as $lang) {
-            $langs[] = $lang->getCode();
+        foreach ($langsQuery as $lang ) {
+            array_push( $langs, $lang->getCode() );
         }
 
         $timezone = date_default_timezone_get();
 
-        $urlClient = $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['HTTP_HOST'].'/shopimind';
+        $urlClient = $_SERVER['REQUEST_SCHEME']. '://' .$_SERVER['HTTP_HOST'] . '/shopimind';
 
-        $configQuery = ConfigQuery::create()->findByName('thelia_version');
-        $ecommerce_version = $configQuery->getColumnValues('value');
+        $configQuery = ConfigQuery::create()->findByName( 'thelia_version' );
+        $ecommerce_version = $configQuery->getColumnValues( 'value' );
 
         $config = [
             'default_currency' => $currencyQuery->getCode(),
@@ -128,10 +114,12 @@ class ConfigurationController extends BaseAdminController
             'langs' => $langs,
             'timezone' => $timezone,
             'url_client' => $urlClient,
-            'ecommerce_version' => reset($ecommerce_version),
-            'module_version' => '1.0.0',
+            'ecommerce_version' => reset( $ecommerce_version ),
+            'module_version' => '1.0.1'
         ];
-
-        return SpmShopConnection::saveConfiguration($auth, $config);
+        
+        $response = SpmShopConnection::saveConfiguration( $auth, $config );
+        
+        return $response;
     }
 }

@@ -1,60 +1,79 @@
 <?php
 
-/*
- * This file is part of the Thelia package.
- * http://www.thelia.net
- *
- * (c) OpenStudio <info@thelia.net>
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
 namespace Shopimind\PassiveSynchronization;
 
-require_once \dirname(__DIR__).'/vendor-module/autoload.php';
+require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 
-use Shopimind\Data\ProductsVariationsData;
-use Shopimind\lib\Utils;
-use Shopimind\SdkShopimind\SpmProductsVariations;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Thelia\Model\Base\LangQuery;
 use Thelia\Model\ProductSaleElementsQuery;
+use Symfony\Component\HttpFoundation\Request;
+use Shopimind\lib\Utils;
+use Thelia\Model\Base\LangQuery;
+use Shopimind\SdkShopimind\SpmProductsVariations;
+use Shopimind\Data\ProductsVariationsData;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncProductsVariations extends AbstractController
 {
+
     /**
-     * Process synchronization for products variations.
+     * Process synchronization for products variations
      *
      * @param string $lastUpdate
-     * @param array|int $ids
-     * @param string $requestedBy
+     * @param $ids
+     * @param $requestedBy
+     * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncProductsVariations(string $lastUpdate, array|int $ids, string $requestedBy): array
+    public static function processSyncProductsVariations ( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
     {
         $productsVariationsIds = null;
-        if (!empty($ids)) {
-            $productsVariationsIds = (!\is_array($ids) && $ids > 0) ? [$ids] : $ids;
+        if ( !empty( $ids ) ) {
+            $productsVariationsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
         }
 
-        if (empty($lastUpdate)) {
-            if (empty($productsVariationsIds)) {
+        if ( empty( $lastUpdate ) ) {
+            if ( empty( $productsVariationsIds ) ) {
                 $count = ProductSaleElementsQuery::create()->find()->count();
-            } else {
-                $count = ProductSaleElementsQuery::create()->filterById($productsVariationsIds)->find()->count();
+            }else {
+                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->find()->count();                
             }
         } else {
-            if (empty($productsVariationsIds)) {
-                $count = ProductSaleElementsQuery::create()->filterByUpdatedAt($lastUpdate, '>=')->count();
-            } else {
-                $count = ProductSaleElementsQuery::create()->filterById($productsVariationsIds)->filterByUpdatedAt($lastUpdate, '>=')->count();
+            if ( empty( $productsVariationsIds ) ) {
+                $count = ProductSaleElementsQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
+            }else {
+                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }
         }
 
-        if ($count == 0) {
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $count = $count * $langs->count();
+
+        if ( !empty( $idShopAskSyncs ) ) {
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_variations' );
+            
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_variations' );
+            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
+            if( $oldCount > 0 ){
+                $count = $oldCount;
+            }
+
+            $objectStatus = [
+                "status" => "in_progress",
+                "total_objects_count" => $count,
+            ];
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+        }
+
+        if ( $count == 0 ) {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+            }
+            
             return [
                 'success' => true,
                 'count' => 0,
@@ -62,104 +81,145 @@ class SyncProductsVariations extends AbstractController
         }
 
         $synchronizationStatus = Utils::loadSynchronizationStatus();
-
-        if (
-            !empty($synchronizationStatus)
-            && isset($synchronizationStatus['synchronization_status'])
-            && isset($synchronizationStatus['synchronization_status']['products_variations'])
-            && $synchronizationStatus['synchronization_status']['products_variations'] == 1
-        ) {
+        
+        if ( 
+            !empty( $synchronizationStatus ) 
+            && isset( $synchronizationStatus['synchronization_status'] ) 
+            && isset( $synchronizationStatus['synchronization_status']['products_variations'] ) 
+            && $synchronizationStatus['synchronization_status']['products_variations'] == 1 
+            ) {
             return [
                 'success' => false,
                 'message' => 'A previous process is still running.',
             ];
         }
 
-        Utils::updateSynchronizationStatus('products_variations', 1);
+        Utils::updateSynchronizationStatus( 'products_variations', 1 );
 
-        Utils::launchSynchronisation('products-variations', $lastUpdate, $productsVariationsIds, $requestedBy);
+        Utils::launchSynchronisation( 'products-variations', $lastUpdate, $productsVariationsIds, $requestedBy, $idShopAskSyncs  );
 
         return [
             'success' => true,
             'count' => $count,
-        ];
+        ]; 
     }
-
+  
     /**
      * Synchronizes product variations.
      *
-     * @param Request $request
-     * @param EventDispatcherInterface $dispatcher
      * @return void
      */
-    public static function syncProductsVariations(Request $request, EventDispatcherInterface $dispatcher): void
+    public static function syncProductsVariations( Request $request, EventDispatcherInterface $dispatcher )
     {
         try {
-            $body = json_decode($request->getContent(), true);
+            $body =  json_decode( $request->getContent(), true );
 
-            $lastUpdate = (isset($body['last_update'])) ? $body['last_update'] : null;
+            $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
 
             $productsVariationsIds = null;
-            $ids = (isset($body['ids'])) ? $body['ids'] : null;
-            if (!empty($ids)) {
-                $productsVariationsIds = (!\is_array($ids) && $ids > 0) ? [$ids] : $ids;
+            $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
+            if ( !empty( $ids ) ) {
+                $productsVariationsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
             }
 
-            $requestedBy = (isset($body['requestedBy'])) ? $body['requestedBy'] : null;
+            $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
 
-            $langs = LangQuery::create()->filterByActive(1)->find();
+            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
+
+            $langs = LangQuery::create()->filterByActive( 1 )->find();
 
             $offset = 0;
-            $limit = intdiv(20, $langs->count());
+            $limit = intdiv( 20, $langs->count() );
 
             $hasMore = true;
 
             do {
-                if (empty($lastUpdate)) {
-                    if (empty($productsVariationsIds)) {
-                        $productsVariations = ProductSaleElementsQuery::create()->offset($offset)->limit($limit)->orderBy('product_id')->find();
-                    } else {
-                        $productsVariations = ProductSaleElementsQuery::create()->filterById($productsVariationsIds)->offset($offset)->limit($limit)->orderBy('product_id')->find();
+                if ( empty( $lastUpdate ) ) {
+                    if ( empty( $productsVariationsIds ) ) {
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
+                    }else {
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsVariationsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->find();
                     }
                 } else {
-                    $lastUpdate = trim($lastUpdate, '"\'');
-                    if (empty($productsVariationsIds)) {
-                        $productsVariations = ProductSaleElementsQuery::create()->offset($offset)->limit($limit)->orderBy('product_id')->filterByUpdatedAt($lastUpdate, '>=');
-                    } else {
-                        $productsVariations = ProductSaleElementsQuery::create()->filterById($productsVariationsIds)->offset($offset)->limit($limit)->orderBy('product_id')->filterByUpdatedAt($lastUpdate, '>=');
+                    $lastUpdate = trim( $lastUpdate, '"\'');
+                    if ( empty( $productsVariationsIds ) ) {
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
+                    }else {
+                        $productsVariations = ProductSaleElementsQuery::create()
+                            ->orderByUpdatedAt()
+                            ->filterById( $productsVariationsIds )
+                            ->offset( $offset )
+                            ->limit( $limit )
+                            ->orderBy('product_id')
+                            ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }
                 }
 
-                if ($productsVariations->count() < $limit) {
+                if ( $productsVariations->count() < $limit ) {
                     $hasMore = false;
                 } else {
-                    $offset += $limit;
+                    $offset += $limit;    
                 }
 
-                if ($productsVariations->count() > 0) {
+                if ( $productsVariations->count() > 0 ) {
                     $data = [];
-                    foreach ($productsVariations as $productVariation) {
+                    foreach ( $productsVariations as $productVariation ) {
                         $productId = $productVariation->getProductId();
-                        foreach ($langs as $lang) {
-                            $data[$productId][] = ProductsVariationsData::formatProductVariation($productVariation, $dispatcher, null, $lang->getLocale());
+                        foreach ( $langs as $lang ) {
+                            $data[ $productId ][] = ProductsVariationsData::formatProductVariation( $productVariation, null, $lang->getLocale(), $dispatcher );
                         }
                     }
 
-                    foreach ($data as $productId => $value) {
-                        $requestHeaders = $requestedBy ? ['answered-for' => $requestedBy] : [];
-                        $response = SpmProductsVariations::bulkSave(Utils::getAuth($requestHeaders), $productId, $value);
+                    foreach ( $data as $productId => $value ) {
+                        $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
+                        $response = SpmProductsVariations::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
+                    
+                        if ( !empty( $idShopAskSyncs ) ) {
+                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_variations', $response, count( $value ) );
 
-                        Utils::handleResponse($response);
+                            $lastObject = end( $value );
+                            $lastObjectUpdate = $lastObject['updated_at'];
+                            $objectStatus = [
+                                "last_object_update" => $lastObjectUpdate,
+                            ];
+                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );  
+                        }
 
-                        Utils::log('productsVariations', 'passive synchronization', json_encode($response));
+                        Utils::handleResponse( $response );
+
+                        Utils::log( 'productsVariations' , 'passive synchronization', json_encode( $response ) );
                     }
                 }
-            } while ($hasMore);
+            } while ( $hasMore );
+
         } catch (\Throwable $th) {
-            Utils::log('productsVariations', 'passive synchronization', $th->getMessage());
-        } finally {
-            Utils::log('productsVariations', 'passive synchronization', 'finally', null);
-            Utils::updateSynchronizationStatus('products_variations', 0);
+            Utils::log( 'productsVariations' , 'passive synchronization', $th->getMessage() );
+        }  finally {
+            if ( !empty( $idShopAskSyncs ) ) {
+                $objectStatus = [
+                    "status" => "completed",
+                ];
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+            }
+
+            Utils::log( 'productsVariations', 'passive synchronization', 'finally', null );
+            Utils::updateSynchronizationStatus( 'products_variations', 0 );
         }
     }
 }

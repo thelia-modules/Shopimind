@@ -4,43 +4,42 @@ namespace Shopimind\PassiveSynchronization;
 
 require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 
-use Thelia\Model\CouponQuery;
-use Shopimind\lib\Utils;
-use Thelia\Model\Base\LangQuery;
-use Shopimind\SdkShopimind\SpmVoucher;
-use Shopimind\Data\VouchersData;
 use Symfony\Component\HttpFoundation\Request;
+use Shopimind\SdkShopimind\SpmCustomersGroups;
+use Shopimind\Data\CustomersGroupsData; 
+use Shopimind\lib\Utils;
+use CustomerFamily\Model\CustomerFamilyQuery;
+use Thelia\Model\Base\LangQuery;
 use Shopimind\Model\ShopimindSyncStatus;
 
-class SyncVouchers
+class SyncCustomersGroups
 {
     /**
-     * Process synchronization for coupons
+     * Process synchronization for customers groups
      *
      * @param $lastUpdate
      * @param $ids
-     * @param $requestedBy
      * @param $idShopAskSyncs
      * @return array
      */
-    public static function processSyncVouchers( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
+    public static function processSyncCustomersGroups( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs  ): array
     {
-        $vouchersIds = null;
+        $customersGroupsIds = null;
         if ( !empty( $ids ) ) {
-            $vouchersIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
+            $customersGroupsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
         }
 
         if ( empty( $lastUpdate ) ) {
-            if ( empty( $vouchersIds ) ) {
-                $count = CouponQuery::create()->find()->count();
+            if ( empty( $customersGroupsIds ) ) {
+                $count = CustomerFamilyQuery::create()->find()->count();
             }else {
-                $count = CouponQuery::create()->filterById( $vouchersIds )->find()->count();                
+                $count = CustomerFamilyQuery::create()->filterById( $customersGroupsIds )->find()->count();
             }
         } else {
-            if ( empty( $vouchersIds ) ) {
-                $count = CouponQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
+            if ( empty( $customersGroupsIds ) ) {
+                $count = CustomerFamilyQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }else {
-                $count = CouponQuery::create()->filterById( $vouchersIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();                
+                $count = CustomerFamilyQuery::create()->filterById( $customersGroupsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }
         }
 
@@ -48,9 +47,9 @@ class SyncVouchers
         $count = $count * $langs->count();
 
         if ( !empty( $idShopAskSyncs ) ) {
-            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'vouchers' );
-            
-            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'vouchers' );
+            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'customers_groups' );
+
+            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'customers_groups' );
             $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
             if( $oldCount > 0 ){
                 $count = $oldCount;
@@ -60,7 +59,7 @@ class SyncVouchers
                 "status" => "in_progress",
                 "total_objects_count" => $count,
             ];
-            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_groups', $objectStatus );
         }
 
         if ( $count == 0 ) {
@@ -68,9 +67,9 @@ class SyncVouchers
                 $objectStatus = [
                     "status" => "completed",
                 ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_groups', $objectStatus );
             }
-            
+
             return [
                 'success' => true,
                 'count' => 0,
@@ -81,8 +80,8 @@ class SyncVouchers
         
         if (
             $synchronizationStatus &&
-            isset($synchronizationStatus['synchronization_status']['vouchers'])
-            && $synchronizationStatus['synchronization_status']['vouchers'] == 1
+            isset($synchronizationStatus['synchronization_status']['customers_groups'])
+            && $synchronizationStatus['synchronization_status']['customers_groups'] == 1
             ) {
             return [
                 'success' => false,
@@ -90,9 +89,9 @@ class SyncVouchers
             ];
         }
 
-        Utils::updateSynchronizationStatus( 'vouchers', 1 );
+        Utils::updateSynchronizationStatus( 'customers_groups', 1 );
 
-        Utils::launchSynchronisation( 'vouchers', $lastUpdate, $vouchersIds, $requestedBy, $idShopAskSyncs );
+        Utils::launchSynchronisation( 'customers-groups', $lastUpdate, $customersGroupsIds, $requestedBy, $idShopAskSyncs );
 
         return [
             'success' => true,
@@ -100,22 +99,22 @@ class SyncVouchers
         ];
     }
 
-     /**
-     * Synchronizes vouchres.
+    /**
+     * Synchronizes customers groups.
      *
      * @return void
      */
-    public static function syncVouchers( Request $request )
+    public static function syncCustomersGroups( Request $request )
     {
         try {
             $body =  json_decode( $request->getContent(), true );
 
             $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
 
-            $vouchersIds = null;
+            $customersGroupsIds = null;
             $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
             if ( !empty( $ids ) ) {
-                $vouchersIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
+                $customersGroupsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
             }
 
             $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
@@ -132,89 +131,88 @@ class SyncVouchers
 
             do {
                 if ( empty( $lastUpdate ) ) {
-                    if ( empty( $vouchersIds ) ) {
-                        $coupons = CouponQuery::create()
+                    if ( empty( $customersGroupsIds ) ) {
+                        $customersGroups = CustomerFamilyQuery::create()
                             ->orderByUpdatedAt()
                             ->offset( $offset )
                             ->limit( $limit )
                             ->find();
                     }else {
-                        $coupons = CouponQuery::create()
+                        $customersGroups = CustomerFamilyQuery::create()
                             ->orderByUpdatedAt()
-                            ->filterById( $vouchersIds )
+                            ->filterById( $customersGroupsIds )
                             ->offset( $offset )
                             ->limit( $limit )
-                            ->find();
+                            ->find();                        
                     }
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
-                    if ( empty( $vouchersIds ) ) {
-                        $coupons = CouponQuery::create()
+                    if ( empty( $customersGroupsIds ) ) {
+                        $customersGroups = CustomerFamilyQuery::create()
                             ->orderByUpdatedAt()
                             ->offset( $offset )
                             ->limit( $limit )
                             ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $coupons = CouponQuery::create()
+                        $customersGroups = CustomerFamilyQuery::create()
                             ->orderByUpdatedAt()
-                            ->filterById( $vouchersIds )
+                            ->filterById( $customersGroupsIds )
                             ->offset( $offset )
                             ->limit( $limit )
                             ->filterByUpdatedAt( $lastUpdate, '>=' );                        
                     }
                 }
         
-                if ( $coupons->count() < $limit ) {
+                if ( $customersGroups->count() < $limit ) {
                     $hasMore = false;
                 } else {
                     $offset += $limit;    
                 }
         
-                if ( $coupons->count() > 0 ) {
+                if ( $customersGroups->count() > 0 ) {
                     $data = [];
-        
-                    foreach ( $coupons as $coupon ) {
-                        $couponDefault = $coupon->getTranslation( $defaultLocal );
-                        
+                    foreach ( $customersGroups as $customersGroup ) {
+                        $customersGroupDefault = $customersGroup->getTranslation( $defaultLocal );
+
                         foreach ( $langs as $lang ) {
-                            $couponTranslated = $coupon->getTranslation( $lang->getLocale() );
-        
-                            $data[] = VouchersData::formatVoucher( $coupon, $couponTranslated, $couponDefault );
+                            $customersGroupTranslated = $customersGroup->getTranslation( $lang->getLocale() );
+
+                            $data[] = CustomersGroupsData::formatCustomerGroup( $customersGroup, $customersGroupTranslated, $customersGroupDefault );
                         }
                     }
         
                     $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
-                    $response = SpmVoucher::bulkSave( Utils::getAuth( $requestHeaders ), $data );
+                    $response = SpmCustomersGroups::bulkSave( Utils::getAuth( $requestHeaders ), $data );
                     
                     if ( !empty( $idShopAskSyncs ) ) {
-                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'vouchers', $response, count( $data ) );
+                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'customers_groups', $response, count( $data ) );
 
                         $lastObject = end( $data );
                         $lastObjectUpdate = $lastObject['updated_at'];
                         $objectStatus = [
                             "last_object_update" => $lastObjectUpdate,
                         ];
-                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );  
+                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_groups', $objectStatus );    
                     }
 
                     Utils::handleResponse( $response );
-        
-                    Utils::log( 'vouchers' , 'passive synchronization', json_encode( $response ) );
+                    
+                    Utils::log( 'customersGroups', 'passive synchronization', json_encode( $response ) );
                 }
             } while ( $hasMore );
         
         } catch (\Throwable $th) {
-            Utils::log( 'vouchers' , 'passive synchronization' , $th->getMessage() );
+            Utils::log( 'customersGroups' ,'passive synchronization' , $th->getMessage() );
         }  finally {
             if ( !empty( $idShopAskSyncs ) ) {
                 $objectStatus = [
                     "status" => "completed",
                 ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );
+                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_groups', $objectStatus );
             }
 
-            Utils::log( 'vouchers', 'passive synchronization', 'finally', null);
-            Utils::updateSynchronizationStatus( 'vouchers', 0 );
+            Utils::log( 'customersGroups', 'passive synchronization', 'finally', null);
+            Utils::updateSynchronizationStatus( 'customers_groups', 0 );
         }
     }
 }
