@@ -12,7 +12,7 @@
 
 namespace Shopimind\EventListeners;
 
-require_once dirname(__DIR__) . '/vendor-module/autoload.php';
+require_once \dirname(__DIR__).'/vendor-module/autoload.php';
 
 use Shopimind\Data\OrdersData;
 use Shopimind\lib\Utils;
@@ -21,17 +21,20 @@ use Thelia\Model\Event\OrderEvent;
 
 class OrderListener
 {
+    public function __construct(private OrdersData $ordersData)
+    {
+    }
+
     /**
      * Synchronizes data after a order is inserted.
      *
      * @param OrderEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderInsert(OrderEvent $event): void
+    public function postOrderInsert(OrderEvent $event): void
     {
         $order = $event->getModel();
 
-        $data[] = OrdersData::formatOrder($order);
+        $data[] = $this->ordersData->formatOrder($order);
 
         $response = SpmOrders::bulkSave(Utils::getAuth(), $data);
 
@@ -44,13 +47,12 @@ class OrderListener
      * Synchronizes data after an order is updated.
      *
      * @param OrderEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderUpdate(OrderEvent $event): void
+    public function postOrderUpdate(OrderEvent $event): void
     {
         $order = $event->getModel();
 
-        $data[] = OrdersData::formatOrder($order);
+        $data[] = $this->ordersData->formatOrder($order);
 
         $response = SpmOrders::bulkUpdate(Utils::getAuth(), $data);
 
@@ -63,9 +65,8 @@ class OrderListener
      * Synchronizes data after a order is deleted.
      *
      * @param OrderEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderDelete(OrderEvent $event): void
+    public function postOrderDelete(OrderEvent $event): void
     {
         $order = $event->getModel()->getId();
 

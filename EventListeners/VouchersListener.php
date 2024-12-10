@@ -22,13 +22,16 @@ use Thelia\Model\Event\CouponEvent;
 
 class VouchersListener
 {
+    public function __construct(private VouchersData $vouchersData)
+    {
+    }
+
     /**
      * Synchronizes data after a coupon is inserted.
      *
      * @param CouponEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCouponInsert(CouponEvent $event): void
+    public function postCouponInsert(CouponEvent $event): void
     {
         $coupon = $event->getModel();
 
@@ -41,7 +44,7 @@ class VouchersListener
         foreach ($langs as $lang) {
             $couponTranslated = $coupon->getTranslation($lang->getLocale());
 
-            $data[] = VouchersData::formatVoucher($coupon, $couponTranslated, $couponDefault);
+            $data[] = $this->vouchersData->formatVoucher($coupon, $couponTranslated, $couponDefault);
         }
 
         $response = SpmVoucher::bulkSave(Utils::getAuth(), $data);
@@ -55,9 +58,8 @@ class VouchersListener
      * Synchronizes data after a coupon is updated.
      *
      * @param CouponEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCouponUpdate(CouponEvent $event): void
+    public function postCouponUpdate(CouponEvent $event): void
     {
         $coupon = $event->getModel();
 
@@ -70,7 +72,7 @@ class VouchersListener
         foreach ($langs as $lang) {
             $couponTranslated = $coupon->getTranslation($lang->getLocale());
 
-            $data[] = VouchersData::formatVoucher($coupon, $couponTranslated, $couponDefault);
+            $data[] = $this->vouchersData->formatVoucher($coupon, $couponTranslated, $couponDefault);
         }
 
         $response = SpmVoucher::bulkUpdate(Utils::getAuth(), $data);
@@ -84,9 +86,8 @@ class VouchersListener
      * Synchronizes data after a coupon is deleted.
      *
      * @param CouponEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCouponDelete(CouponEvent $event): void
+    public function postCouponDelete(CouponEvent $event): void
     {
         $coupon = $event->getModel()->getId();
 

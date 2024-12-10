@@ -21,11 +21,8 @@ class NewsletterSubscribersData
 {
     /**
      * Formats the newsletter data to match the Shopimind format.
-     *
-     * @param Newsletter $newsletter
-     * @return array
      */
-    public static function formatNewsletterSubscriber(Newsletter $newsletter): array
+    public function formatNewsletterSubscriber(Newsletter $newsletter): array
     {
         return [
             'email' => $newsletter->getEmail(),
@@ -40,11 +37,8 @@ class NewsletterSubscribersData
 
     /**
      * Verifies whether a customer is subscribed to the newsletter.
-     *
-     * @param string $customerEmail
-     * @return bool
      */
-    public static function isNewsletterSubscribed(string $customerEmail): bool
+    public function isNewsletterSubscribed(string $customerEmail): bool
     {
         $newsletter = NewsletterQuery::create()->findOneByEmail($customerEmail);
         if (!empty($newsletter)) {
@@ -56,9 +50,6 @@ class NewsletterSubscribersData
 
     /**
      * Retrieves the zipcode for a customer.
-     *
-     * @param string $email
-     * @return string
      */
     public static function getZipCode(string $email): string
     {
@@ -75,9 +66,6 @@ class NewsletterSubscribersData
 
     /**
      * Format data to update customer after newslettersubscribing update.
-     *
-     * @param string $email
-     * @return array
      */
     public static function customerData(string $email): array
     {

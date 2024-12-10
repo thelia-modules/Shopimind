@@ -21,17 +21,20 @@ use Thelia\Model\Event\CustomerEvent;
 
 class CustomersListener
 {
+    public function __construct(private CustomersData $customersData)
+    {
+    }
+
     /**
      * Synchronizes data after a customer is inserted.
      *
      * @param CustomerEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCustomerInsert(CustomerEvent $event): void
+    public function postCustomerInsert(CustomerEvent $event): void
     {
         $customer = $event->getModel();
 
-        $data[] = CustomersData::formatCustomer($customer);
+        $data[] = $this->customersData->formatCustomer($customer);
 
         $response = SpmCustomers::bulkSave(Utils::getAuth(), $data);
 
@@ -44,13 +47,11 @@ class CustomersListener
      * Synchronizes data after a customer is updated.
      *
      * @param CustomerEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCustomerUpdate(CustomerEvent $event): void
+    public function postCustomerUpdate(CustomerEvent $event): void
     {
         $customer = $event->getModel();
-
-        $data[] = CustomersData::formatCustomer($customer);
+        $data[] = $this->customersData->formatCustomer($customer);
 
         $response = SpmCustomers::bulkUpdate(Utils::getAuth(), $data);
 
@@ -63,9 +64,8 @@ class CustomersListener
      * Synchronizes data after a customer is deleted.
      *
      * @param CustomerEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCustomerDelete(CustomerEvent $event): void
+    public function postCustomerDelete(CustomerEvent $event): void
     {
         $customerId = $event->getModel()->getId();
 

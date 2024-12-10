@@ -19,12 +19,8 @@ class OrderStatusData
 {
     /**
      * Formats the order status data to match the Shopimind format.
-     *
-     * @param OrderStatus $orderStatus
-     * @param OrderStatusI18n $orderStatusTranslated
-     * @return array
      */
-    public static function formatOrderStatus(OrderStatus $orderStatus, OrderStatusI18n $orderStatusTranslated): array
+    public function formatOrderStatus(OrderStatus $orderStatus, OrderStatusI18n $orderStatusTranslated): array
     {
         return [
             'status_id' => (string) $orderStatus->getId(),

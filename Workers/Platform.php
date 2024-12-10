@@ -16,9 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class Platform
 {
-    /**
-     * @return Response
-     */
     public static function serveFile(): Response
     {
         $filePath = \dirname(__DIR__).'/Workers/Scripts/platform.js';

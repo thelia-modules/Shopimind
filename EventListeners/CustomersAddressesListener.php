@@ -21,17 +21,18 @@ use Thelia\Model\Event\AddressEvent;
 
 class CustomersAddressesListener
 {
+    public function __construct(private CustomersAddressesData $customersAddressesData)
+    {
+    }
+
     /**
      * Synchronizes data after a customer address is inserted.
-     *
-     * @param AddressEvent $event
-     * @return void
      */
-    public static function postAddressInsert(AddressEvent $event): void
+    public function postAddressInsert(AddressEvent $event): void
     {
         $address = $event->getModel();
 
-        $data[] = CustomersAddressesData::formatCustomerAddress($address);
+        $data[] = $this->customersAddressesData->formatCustomerAddress($address);
 
         $response = SpmCustomersAddresses::bulkSave(Utils::getAuth(), $address->getCustomerId(), $data);
 
@@ -42,15 +43,12 @@ class CustomersAddressesListener
 
     /**
      * Synchronizes data after a customer address is updated.
-     *
-     * @param AddressEvent $event
-     * @return void
      */
-    public static function postAddressUpdate(AddressEvent $event): void
+    public function postAddressUpdate(AddressEvent $event): void
     {
         $address = $event->getModel();
 
-        $data[] = CustomersAddressesData::formatCustomerAddress($address);
+        $data[] = $this->customersAddressesData->formatCustomerAddress($address);
 
         $response = SpmCustomersAddresses::bulkUpdate(Utils::getAuth(), $address->getCustomerId(), $data);
 
@@ -61,11 +59,8 @@ class CustomersAddressesListener
 
     /**
      * Synchronizes data after a customer address is deleted.
-     *
-     * @param AddressEvent $event
-     * @return void
      */
-    public static function postAddressDelete(AddressEvent $event): void
+    public function postAddressDelete(AddressEvent $event): void
     {
         $address = $event->getModel();
 

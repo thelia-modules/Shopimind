@@ -9,8 +9,7 @@ class SpmShopConnection
      * Save the configuration to a persistent
      *
      */
-    public static function saveConfiguration( $httpClient, $data): array
-    {
+    public static function saveConfiguration( $httpClient, $data){
         $endpoint = 'shop/connection';
 
         try {

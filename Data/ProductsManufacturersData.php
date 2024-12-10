@@ -18,11 +18,8 @@ class ProductsManufacturersData
 {
     /**
      * Formats the product manufacturer data to match the Shopimind format.
-     *
-     * @param Brand $brand
-     * @return array
      */
-    public static function formatProductmanufacturer(Brand $brand): array
+    public function formatProductmanufacturer(Brand $brand): array
     {
         return [
             'manufacturer_id' => (string) $brand->getId(),

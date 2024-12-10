@@ -1,23 +1,37 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\EventListeners;
 
-require_once __DIR__ . '/../vendor-module/autoload.php';
+require_once __DIR__.'/../vendor-module/autoload.php';
 
 use CustomerFamily\Event\CustomerFamilyEvent;
-use Shopimind\lib\Utils;
 use Shopimind\Data\CustomersGroupsData;
+use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmCustomersGroups;
 use Thelia\Model\Base\LangQuery;
 
-
 class CustomersGroupsListener
 {
+    public function __construct(private CustomersGroupsData $customersGroupsData)
+    {
+    }
+
     /**
      * Synchronizes data after a customer group is inserted.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param CustomerFamilyEvent $event the event object triggering the action
      */
-    public static function postCustomerGroupInsert(CustomerFamilyEvent $event): void
+    public function postCustomerGroupInsert(CustomerFamilyEvent $event): void
     {
         // $customerGroup = $event->getCustomerFamily();
 
@@ -30,11 +44,11 @@ class CustomersGroupsListener
         // foreach ( $langs as $lang ) {
         //     $customerGroupTranslated = $customerGroup->getTranslation( $lang->getLocale() );
 
-        //     $data[] = CustomersGroupsData::formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
+        //     $data[] = $this->customersGroupsData->formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
         // }
 
         // $response = SpmCustomersGroups::bulkSave( Utils::getAuth(), $data );
-        
+
         // Utils::handleResponse( $response );
 
         // Utils::log( 'CustomerGroup', 'Save', json_encode( $data ), $customerGroup->getId() );
@@ -43,43 +57,43 @@ class CustomersGroupsListener
     /**
      * Synchronizes data after a customer group is updated.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param CustomerFamilyEvent $event the event object triggering the action
      */
-    public static function postCustomerGroupUpdate(CustomerFamilyEvent $event): void
+    public function postCustomerGroupUpdate(CustomerFamilyEvent $event): void
     {
         $customerGroup = $event->getCustomerFamily();
 
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $langs = LangQuery::create()->filterByActive(1)->find();
         $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $customerGroupDefault = $customerGroup->getTranslation( $defaultLocal );
+        $customerGroupDefault = $customerGroup->getTranslation($defaultLocal);
 
         $data = [];
 
-        foreach ( $langs as $lang ) {
-            $customerGroupTranslated = $customerGroup->getTranslation( $lang->getLocale() );
+        foreach ($langs as $lang) {
+            $customerGroupTranslated = $customerGroup->getTranslation($lang->getLocale());
 
-            $data[] = CustomersGroupsData::formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
+            $data[] = $this->customersGroupsData->formatCustomerGroup($customerGroup, $customerGroupTranslated, $customerGroupDefault);
         }
 
-        $response = SpmCustomersGroups::bulkUpdate( Utils::getAuth(), $data );
-        
-        Utils::handleResponse( $response );
+        $response = SpmCustomersGroups::bulkUpdate(Utils::getAuth(), $data);
 
-        Utils::log( 'CustomerGroup', 'Update', json_encode( $response ), $customerGroup->getId() );
+        Utils::handleResponse($response);
+
+        Utils::log('CustomerGroup', 'Update', json_encode($response), $customerGroup->getId());
     }
 
     /**
      * Synchronizes data after a customer group is deleted.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param CustomerFamilyEvent $event the event object triggering the action
      */
-    public static function postCustomerGroupDelete(CustomerFamilyEvent $event): void
+    public function postCustomerGroupDelete(CustomerFamilyEvent $event): void
     {
         $customerGroup = $event->getCustomerFamily()->getid();
-        $response = SpmCustomersGroups::delete( Utils::getAuth(), $customerGroup );
-        
-        Utils::handleResponse( $response );
+        $response = SpmCustomersGroups::delete(Utils::getAuth(), $customerGroup);
 
-        Utils::log( 'CustomerGroup', 'Delete', json_encode( $response ), $customerGroup );
+        Utils::handleResponse($response);
+
+        Utils::log('CustomerGroup', 'Delete', json_encode($response), $customerGroup);
     }
 }

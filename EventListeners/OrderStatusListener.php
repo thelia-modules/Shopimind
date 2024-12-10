@@ -22,13 +22,16 @@ use Thelia\Model\Event\OrderStatusEvent;
 
 class OrderStatusListener
 {
+    public function __construct(private OrderStatusData $orderStatusData)
+    {
+    }
+
     /**
      * Synchronizes data after an order status is inserted.
      *
      * @param OrderStatusEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderStatusInsert(OrderStatusEvent $event): void
+    public function postOrderStatusInsert(OrderStatusEvent $event): void
     {
         $orderStatus = $event->getModel();
 
@@ -39,7 +42,7 @@ class OrderStatusListener
         foreach ($langs as $lang) {
             $orderStatusTranslated = $orderStatus->getTranslation($lang->getLocale());
 
-            $data[] = OrderStatusData::formatOrderStatus($orderStatus, $orderStatusTranslated);
+            $data[] = $this->orderStatusData->formatOrderStatus($orderStatus, $orderStatusTranslated);
         }
 
         $response = SpmOrdersStatus::bulkSave(Utils::getAuth(), $data);
@@ -53,9 +56,8 @@ class OrderStatusListener
      * Synchronizes data after an order status is updated.
      *
      * @param OrderStatusEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderStatusUpdate(OrderStatusEvent $event): void
+    public function postOrderStatusUpdate(OrderStatusEvent $event): void
     {
         $orderStatus = $event->getModel();
 
@@ -66,7 +68,7 @@ class OrderStatusListener
         foreach ($langs as $lang) {
             $orderStatusTranslated = $orderStatus->getTranslation($lang->getLocale());
 
-            $data[] = OrderStatusData::formatOrderStatus($orderStatus, $orderStatusTranslated);
+            $data[] = $this->orderStatusData->formatOrderStatus($orderStatus, $orderStatusTranslated);
         }
 
         $response = SpmOrdersStatus::bulkUpdate(Utils::getAuth(), $data);
@@ -80,9 +82,8 @@ class OrderStatusListener
      * Synchronizes data after an order status is deleted.
      *
      * @param OrderStatusEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderStatusDelete(OrderStatusEvent $event): void
+    public function postOrderStatusDelete(OrderStatusEvent $event): void
     {
         $orderStatus = $event->getModel()->getId();
 

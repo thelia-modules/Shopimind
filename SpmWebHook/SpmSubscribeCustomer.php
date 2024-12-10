@@ -23,8 +23,6 @@ class SpmSubscribeCustomer
     /**
      * Subscribe customer to the newsletter.
      *
-     * @param Request $request
-     * @return JsonResponse
      * @throws \Throwable
      */
     public static function subscribeCustomer(Request $request): JsonResponse

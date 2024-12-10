@@ -21,8 +21,6 @@ class ShopimindQuery extends BaseShopimindQuery
 
     /**
      * Clears the table.
-     *
-     * @return void
      */
     public static function clearTable(): void
     {

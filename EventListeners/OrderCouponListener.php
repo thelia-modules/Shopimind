@@ -24,9 +24,8 @@ class OrderCouponListener
      * Synchronizes order after an order coupon is inserted.
      *
      * @param OrderCouponEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postOrderCouponInsert(OrderCouponEvent $event): void
+    public function postOrderCouponInsert(OrderCouponEvent $event): void
     {
         $orderCoupon = $event->getModel();
 

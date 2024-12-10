@@ -28,14 +28,16 @@ use Thelia\Model\Event\ProductSaleElementsEvent;
 
 class ProductsVariationsListener
 {
+    public function __construct(private ProductsData $productsData, ProductsVariationsData $productsVariationsData)
+    {
+    }
+
     /**
      * Synchronizes data after a product combinaison is inserted.
      *
      * @param ProductSaleElementCreateEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductSaleElementsInsert(ProductSaleElementCreateEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductSaleElementsInsert(ProductSaleElementCreateEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $productSaleElements = $event->getProductSaleElement();
 
@@ -44,7 +46,7 @@ class ProductsVariationsListener
         $data = [];
 
         foreach ($langs as $lang) {
-            $data[] = ProductsVariationsData::formatProductVariation($productSaleElements, $dispatcher, null, $lang->getLocale());
+            $data[] = $this->productsVariationsData->formatProductVariation($productSaleElements, $dispatcher, null, $lang->getLocale());
         }
 
         $response = SpmProductsVariations::bulkSave(Utils::getAuth(), $productSaleElements->getProductId(), $data);
@@ -58,10 +60,8 @@ class ProductsVariationsListener
      * Synchronizes data after a product combinaison is updateed.
      *
      * @param ProductSaleElementUpdateEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductSaleElementsUpdate(ProductSaleElementUpdateEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductSaleElementsUpdate(ProductSaleElementUpdateEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $productSaleElementsId = $event->getProductSaleElementId();
         $productSaleElements = ProductSaleElementsQuery::create()->findOneById($productSaleElementsId);
@@ -76,10 +76,10 @@ class ProductsVariationsListener
 
         $dataProduct = [];
         foreach ($langs as $lang) {
-            $dataProductSaleElement[] = ProductsVariationsData::formatProductVariation($productSaleElements, $dispatcher, null, $lang->getLocale());
+            $dataProductSaleElement[] = $this->productsVariationsData->formatProductVariation($productSaleElements, $dispatcher, null, $lang->getLocale());
 
             $productTranslated = $product->getTranslation($lang->getLocale());
-            $dataProduct[] = ProductsData::formatProduct($product, $productTranslated, $productDefault, $dispatcher);
+            $dataProduct[] = $this->productsData->formatProduct($product, $productTranslated, $productDefault, $dispatcher);
         }
 
         $response = SpmProductsVariations::bulkUpdate(Utils::getAuth(), $productSaleElements->getProductId(), $dataProductSaleElement);
@@ -95,9 +95,8 @@ class ProductsVariationsListener
      * Synchronizes data after a product combinaison is deleted.
      *
      * @param ProductSaleElementsEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postProductSaleElementsDelete(ProductSaleElementsEvent $event): void
+    public function postProductSaleElementsDelete(ProductSaleElementsEvent $event): void
     {
         $productSaleElements = $event->getModel();
 

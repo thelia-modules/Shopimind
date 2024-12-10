@@ -21,17 +21,20 @@ use Thelia\Model\Event\BrandEvent;
 
 class ProductsManufacturersListener
 {
+    public function __construct(private ProductsManufacturersData $productsManufacturersData)
+    {
+    }
+
     /**
      * Synchronizes data after a product manufacturer is inserted.
      *
      * @param BrandEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postBrandInsert(BrandEvent $event): void
+    public function postBrandInsert(BrandEvent $event): void
     {
         $brand = $event->getModel();
 
-        $data[] = ProductsManufacturersData::formatProductmanufacturer($brand);
+        $data[] = $this->productsManufacturersData->formatProductmanufacturer($brand);
 
         $response = SpmProductsManufacturers::bulkSave(Utils::getAuth(), $data);
 
@@ -44,13 +47,12 @@ class ProductsManufacturersListener
      * Synchronizes data after a product manufacturer is updated.
      *
      * @param BrandEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postBrandUpdate(BrandEvent $event): void
+    public function postBrandUpdate(BrandEvent $event): void
     {
         $brand = $event->getModel();
 
-        $data[] = ProductsManufacturersData::formatProductmanufacturer($brand);
+        $data[] = $this->productsManufacturersData->formatProductmanufacturer($brand);
 
         $response = SpmProductsManufacturers::bulkUpdate(Utils::getAuth(), $data);
 
@@ -63,9 +65,8 @@ class ProductsManufacturersListener
      * Synchronizes data after a product manufacturer is deleted.
      *
      * @param BrandEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postBrandDelete(BrandEvent $event): void
+    public function postBrandDelete(BrandEvent $event): void
     {
         $brand = $event->getModel()->getId();
 

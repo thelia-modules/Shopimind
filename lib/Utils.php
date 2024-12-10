@@ -1,13 +1,24 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\lib;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once THELIA_MODULE_DIR.'/Shopimind/vendor-module/autoload.php';
 
 use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\SdkShopimind\SpmUtils;
-use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Yaml\Yaml;
 use Thelia\Model\ModuleQuery;
 
 class Utils
@@ -15,40 +26,44 @@ class Utils
     /**
      * Formats a floating-point number with two decimal places if the number has a decimal part.
      *
-     * @param float $number The number to format.
+     * @param float $number
+     * @return float
      */
-    public static function formatNumber( float $number ){
+    public static function formatNumber(float $number): float
+    {
         if (floor($number) != $number) {
             $numberFormated = number_format(floor($number * 100) / 100, 2, '.', '');
             return (float) $numberFormated;
-        } else {
-            return $number;
         }
+        return $number;
     }
 
     /**
-     * Check if the module is currently connected
+     * Check if the module is currently connected.
      *
-     * @return boolean
+     * @return bool
      */
-    public static function isConnected(){
+    public static function isConnected(): bool
+    {
         $config = ShopimindQuery::create()->findOne();
-        if ( empty( $config ) || ( !empty( $config ) && ( !$config->getIsConnected() ) ) ) {
+        if (empty($config) || (!empty($config) && (!$config->getIsConnected()))) {
             return false;
         }
+
         return true;
     }
 
     /**
-     * Check if the module use real-time synchronization
+     * Check if the module use real-time synchronization.
      *
-     * @return boolean
+     * @return bool
      */
-    public static function useRealTimeSynchronization(){
+    public static function useRealTimeSynchronization(): bool
+    {
         $config = ShopimindQuery::create()->findOne();
-        
-        if ( !empty( $config ) ) {
-            if ( $config->getRealTimeSynchronization() && $config->getIsConnected() ) {
+
+        if (!empty($config)) {
+            if ($config->getRealTimeSynchronization() && $config->getIsConnected()) {
                 return true;
             }
         }
@@ -60,49 +75,35 @@ class Utils
      * Retrieves the authentication credentials.
      *
      * @param array $headers
-     * @return \GuzzleHttp\Client
      */
-    public static function getAuth( $headers = [] ): \GuzzleHttp\Client
+    public static function getAuth($headers = []): \GuzzleHttp\Client
     {
         $config = ShopimindQuery::create()->findOne();
-        $apiPassword = !empty( $config ) ? $config->getApiPassword() : '';
-        return SpmUtils::getClient('v1', $apiPassword, $headers );
+        $apiPassword = !empty($config) ? $config->getApiPassword() : '';
+
+        return SpmUtils::getClient('v1', $apiPassword, $headers);
     }
 
     /**
      * Handles the response from a Shopimind API request.
      *
-     * @param array $response
      * @return void
      */
-    public static function handleResponse( array $response ){
-        // TODO : implement the response handling
+    public static function handleResponse(array $response): void
+    {
         return;
-        $statuscode = isset( $response['statusCode'] ) ? $response['statusCode'] : '';
-        
-        switch ( $statuscode ) {
-            case 401:
-                $config = ShopimindQuery::create()->findOne();
-                $config->setIsConnected(0);
-                $config->save();
-                break;
-            
-            default:
-                # code...
-                break;
-        }
     }
 
     /**
      * Logs synchronization events.
-     *
      */
-    public static function log( $object, $action, $response, $objectId = null ){
+    public static function log($object, $action, $response, $objectId = null): void
+    {
         $config = ShopimindQuery::create()->findOne();
-        
-        if ( !empty( $config ) && ($config->getLog()) ) {
-            $logDir = THELIA_MODULE_DIR . '/Shopimind/logs';
-            $logFile = $logDir . '/module.log';
+
+        if (!empty($config) && $config->getLog()) {
+            $logDir = THELIA_MODULE_DIR.'/Shopimind/logs';
+            $logFile = $logDir.'/module.log';
 
             if (!is_dir($logDir)) {
                 mkdir($logDir, 0777, true);
@@ -112,33 +113,32 @@ class Utils
                 file_put_contents($logFile, '');
             }
             $date = date('Y-m-d H:i:s');
-            $id = !empty($objectId) ? 'id : [' .$objectId. ']' : '';
-            $message = '- [' .$date. '] Synchronization : '.$action.' '.$object.' '.$id.' '.$response. PHP_EOL;
-            
-            error_log( $message, 3, $logFile);
+            $id = !empty($objectId) ? 'id : ['.$objectId.']' : '';
+            $message = '- ['.$date.'] Synchronization : '.$action.' '.$object.' '.$id.' '.$response.\PHP_EOL;
+
+            error_log($message, 3, $logFile);
         }
     }
 
     /**
      * Logs an error message along with the stack trace.
-     *
-     * @param string $type
      */
-    public static function errorLog( \Throwable $th ){
+    public static function errorLog(\Throwable $th): void
+    {
         $date = date('Y-m-d H:i:s');
-        print ('- ['.$date.'] ');
+        echo '- ['.$date.'] ';
         throw $th;
-        print (PHP_EOL);
+        echo \PHP_EOL;
     }
-    
+
     /**
-     * Retrieve module parameters
-     *
+     * Retrieve module parameters.
      */
-    public static function getParameters(){
-        $parametersFile = THELIA_MODULE_DIR . '/Shopimind/parameters.yml';
-        if ( file_exists( $parametersFile ) ) {
-            return Yaml::parseFile(  $parametersFile );
+    public static function getParameters()
+    {
+        $parametersFile = THELIA_MODULE_DIR.'/Shopimind/parameters.yml';
+        if (file_exists($parametersFile)) {
+            return Yaml::parseFile($parametersFile);
         }
 
         return [];
@@ -146,22 +146,21 @@ class Utils
 
     /**
      * Validates a request by checking module connection, API key, and JSON data.
-     *
-     * @param Request $request
      */
-    public static function validateSpmRequest( Request $request ){
-        if ( !self::isConnected() ) {
+    public static function validateSpmRequest(Request $request)
+    {
+        if (!self::isConnected()) {
             return new JsonResponse([
-                'success' =>  false,
+                'success' => false,
                 'message' => 'Module is not connected.',
             ]);
         }
 
         $config = ShopimindQuery::create()->findOne();
         $apiKey = $request->headers->get('api-spm-key');
-        if ( !( $apiKey === sha1($config->getApiPassword()) ) ) {
+        if (!($apiKey === sha1($config->getApiPassword()))) {
             return new JsonResponse([
-                'success' =>  false,
+                'success' => false,
                 'message' => 'Unauthorized.',
             ], 401);
         }
@@ -177,20 +176,17 @@ class Utils
         }
     }
 
-
     /**
      * Launches the passive synchronization process.
-     *
-     * @param string $controller
      */
-    public static function launchSynchronisation( $object, $lastUpdate, $ids = null, $requestedBy = null, $idShopAskSyncs )
+    public static function launchSynchronisation($object, $lastUpdate, $ids = null, $requestedBy = null, $idShopAskSyncs): void
     {
         try {
-            if ( function_exists('exec') && is_callable('exec') ) {
-                Utils::log( $object, 'passive synchronization', 'exec callable', null);
+            if (\function_exists('exec') && \is_callable('exec')) {
+                self::log($object, 'passive synchronization', 'exec callable', null);
 
-                $baseUrl = $_SERVER['REQUEST_SCHEME']. '://' .$_SERVER['HTTP_HOST'];
-                $url = $baseUrl . '/shopimind/sync-' . $object;
+                $baseUrl = $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['HTTP_HOST'];
+                $url = $baseUrl.'/shopimind/sync-'.$object;
 
                 $data = json_encode([
                     'last_update' => $lastUpdate,
@@ -200,18 +196,18 @@ class Utils
                 ]);
 
                 // Construction de la commande curl pour exec
-                $cmd = 'curl -o /dev/null -s -w "%{http_code}" ' . escapeshellarg($url) .
-                    ' -H "Content-Type: application/json" -d ' . escapeshellarg($data) . ' > /dev/null 2>&1 &';
+                $cmd = 'curl -o /dev/null -s -w "%{http_code}" '.escapeshellarg($url).
+                    ' -H "Content-Type: application/json" -d '.escapeshellarg($data).' > /dev/null 2>&1 &';
                 exec($cmd);
             } else {
                 $formattedObject = str_replace('-', '_', $object);
-                Utils::updateSynchronizationStatus( $formattedObject, 0 );
-                Utils::log( $formattedObject, 'passive synchronization', 'exec not callable', null);
+                self::updateSynchronizationStatus($formattedObject, 0);
+                self::log($formattedObject, 'passive synchronization', 'exec not callable', null);
             }
         } catch (\Throwable $th) {
             $formattedObject = str_replace('-', '_', $object);
-            Utils::updateSynchronizationStatus( $formattedObject, 0 );
-            Utils::log( $formattedObject, 'passive synchronization', 'failed', null);
+            self::updateSynchronizationStatus($formattedObject, 0);
+            self::log($formattedObject, 'passive synchronization', 'failed', null);
         }
     }
 
@@ -220,11 +216,12 @@ class Utils
      *
      * @return array
      */
-    public static function loadSynchronizationStatus() {
+    public static function loadSynchronizationStatus()
+    {
         try {
-            $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
-    
-            if ( !file_exists( $synchronizationStatusFile ) ) {
+            $synchronizationStatusFile = THELIA_MODULE_DIR.'/Shopimind/synchronization_status.yml';
+
+            if (!file_exists($synchronizationStatusFile)) {
                 $defaultSyncStatus = [
                     'synchronization_status' => [
                         'customers' => 0,
@@ -239,14 +236,14 @@ class Utils
                         'products_manufacturers' => 0,
                         'products_variations' => 0,
                         'vouchers' => 0,
-                    ]
+                    ],
                 ];
 
-                $yaml = Yaml::dump( $defaultSyncStatus, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
-                file_put_contents( $synchronizationStatusFile, $yaml );
+                $yaml = Yaml::dump($defaultSyncStatus, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+                file_put_contents($synchronizationStatusFile, $yaml);
             }
-        
-            return Yaml::parseFile(  $synchronizationStatusFile );
+
+            return Yaml::parseFile($synchronizationStatusFile);
         } catch (\Throwable $th) {
             return null;
         }
@@ -257,28 +254,29 @@ class Utils
      *
      * @return void
      */
-    public static function updateSynchronizationStatus( $key, $value) {
+    public static function updateSynchronizationStatus($key, $value): void
+    {
         $status = self::loadSynchronizationStatus();
 
         $status['synchronization_status'][$key] = $value;
 
-        $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
+        $synchronizationStatusFile = THELIA_MODULE_DIR.'/Shopimind/synchronization_status.yml';
 
-        $yaml = Yaml::dump( $status, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
-        file_put_contents( $synchronizationStatusFile, $yaml );
+        $yaml = Yaml::dump($status, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+        file_put_contents($synchronizationStatusFile, $yaml);
     }
 
     /**
-     * Check if the module customer family is active
+     * Check if the module customer family is active.
      *
-     * @return boolean
+     * @return bool
      */
     public static function isCustomerFamilyActive()
     {
-        $module = ModuleQuery::create()->findOneByCode( 'CustomerFamily' );
-        
-        if ( !empty( $module ) ) {
-            if ( $module->getActivate() ) {
+        $module = ModuleQuery::create()->findOneByCode('CustomerFamily');
+
+        if (!empty($module)) {
+            if ($module->getActivate()) {
                 return true;
             } else {
                 return false;

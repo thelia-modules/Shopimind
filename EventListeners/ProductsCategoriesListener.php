@@ -22,13 +22,16 @@ use Thelia\Model\Event\CategoryEvent;
 
 class ProductsCategoriesListener
 {
+    public function __construct(private ProductsCategoriesData $productsCategoriesData)
+    {
+    }
+
     /**
      * Synchronizes data after a category is inserted.
      *
      * @param CategoryEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCategoryInsert(CategoryEvent $event): void
+    public function postCategoryInsert(CategoryEvent $event): void
     {
         $category = $event->getModel();
 
@@ -40,7 +43,7 @@ class ProductsCategoriesListener
 
         foreach ($langs as $lang) {
             $categoryTranslated = $category->getTranslation($lang->getLocale());
-            $data[] = ProductsCategoriesData::formatProductCategory($category, $categoryTranslated, $categoryDefault);
+            $data[] = $this->productsCategoriesData->formatProductCategory($category, $categoryTranslated, $categoryDefault);
         }
 
         $response = SpmProductsCategories::bulkSave(Utils::getAuth(), $data);
@@ -54,9 +57,8 @@ class ProductsCategoriesListener
      * Synchronizes data after a category is updated.
      *
      * @param CategoryEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCategoryUpdate(CategoryEvent $event): void
+    public function postCategoryUpdate(CategoryEvent $event): void
     {
         $category = $event->getModel();
 
@@ -69,7 +71,7 @@ class ProductsCategoriesListener
         foreach ($langs as $lang) {
             $categoryTranslated = $category->getTranslation($lang->getLocale());
 
-            $data[] = ProductsCategoriesData::formatProductCategory($category, $categoryTranslated, $categoryDefault);
+            $data[] = $this->productsCategoriesData->formatProductCategory($category, $categoryTranslated, $categoryDefault);
         }
 
         $response = SpmProductsCategories::bulkUpdate(Utils::getAuth(), $data);
@@ -83,9 +85,8 @@ class ProductsCategoriesListener
      * Synchronizes data after a category is deleted.
      *
      * @param CategoryEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postCategoryDelete(CategoryEvent $event): void
+    public function postCategoryDelete(CategoryEvent $event): void
     {
         $category = $event->getModel()->getId();
 

@@ -24,9 +24,6 @@ class ShopimindHook extends BaseHook
 {
     /**
      * Add script tag.
-     *
-     * @param HookRenderEvent $event
-     * @return void
      */
     public function addScriptTagFooter(HookRenderEvent $event): void
     {
@@ -112,9 +109,6 @@ class ShopimindHook extends BaseHook
 
     /**
      * Retrieves cart products.
-     *
-     * @param int $cartId
-     * @return array
      */
     public static function getProducts(int $cartId): array
     {

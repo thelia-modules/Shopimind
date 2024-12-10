@@ -19,13 +19,8 @@ class ProductsCategoriesData
 {
     /**
      * Formats the product category data to match the Shopimind format.
-     *
-     * @param Category $productCategory
-     * @param CategoryI18n $categoryTranslated
-     * @param CategoryI18n $categoryDefault
-     * @return array
      */
-    public static function formatProductCategory(Category $productCategory, CategoryI18n $categoryTranslated, CategoryI18n $categoryDefault): array
+    public function formatProductCategory(Category $productCategory, CategoryI18n $categoryTranslated, CategoryI18n $categoryDefault): array
     {
         return [
             'category_id' => $productCategory->getId(),
@@ -42,10 +37,6 @@ class ProductsCategoriesData
 
     /**
      * Retrieves category name.
-     *
-     * @param CategoryI18n $categoryTranslated
-     * @param CategoryI18n $categoryDefault
-     * @return string
      */
     public static function getName(CategoryI18n $categoryTranslated, CategoryI18n $categoryDefault): string
     {
@@ -54,10 +45,6 @@ class ProductsCategoriesData
 
     /**
      * Retrieves category dscription.
-     *
-     * @param CategoryI18n $categoryTranslated
-     * @param CategoryI18n $categoryDefault
-     * @return string
      */
     public static function getDescription(CategoryI18n $categoryTranslated, CategoryI18n $categoryDefault): string
     {

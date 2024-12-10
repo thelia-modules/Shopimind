@@ -23,14 +23,16 @@ use Thelia\Model\Event\ProductImageEvent;
 
 class ProductImagesListener
 {
+    public function __construct(private ProductImagesData $productImagesData)
+    {
+    }
+
     /**
      * Synchronizes data after a product image is updated.
      *
      * @param ProductImageEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductImageInsert(ProductImageEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductImageInsert(ProductImageEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $image = $event->getModel();
 
@@ -38,7 +40,7 @@ class ProductImagesListener
 
         $data = [];
         foreach ($langs as $lang) {
-            $data[] = ProductImagesData::formatProductImage($image, $lang, $dispatcher);
+            $data[] = $this->productImagesData->formatProductImage($image, $lang, $dispatcher);
         }
 
         $response = SpmProductsImages::bulkSave(Utils::getAuth(), $image->getProductId(), $data);
@@ -52,17 +54,15 @@ class ProductImagesListener
      * Synchronizes data after a product image is updated.
      *
      * @param ProductImageEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductImageUpdate(ProductImageEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductImageUpdate(ProductImageEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $image = $event->getModel();
         $langs = LangQuery::create()->filterByActive(1)->find();
 
         $data = [];
         foreach ($langs as $lang) {
-            $data[] = ProductImagesData::formatProductImage($image, $lang, $dispatcher, 'update');
+            $data[] = $this->productImagesData->formatProductImage($image, $lang, $dispatcher, 'update');
         }
 
         $response = SpmProductsImages::bulkUpdate(Utils::getAuth(), $image->getProductId(), $data);
@@ -76,9 +76,8 @@ class ProductImagesListener
      * Synchronizes data after a product image is deleted.
      *
      * @param ProductImageEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postProductImageDelete(ProductImageEvent $event): void
+    public function postProductImageDelete(ProductImageEvent $event): void
     {
         $image = $event->getModel();
 

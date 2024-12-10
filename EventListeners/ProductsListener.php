@@ -27,13 +27,16 @@ use Thelia\Model\Event\ProductEvent;
 
 class ProductsListener
 {
+    public function __construct(private ProductsData $productsData, ProductsVariationsData $productsVariationsData)
+    {
+    }
+
     /**
      * Synchronizes data after a product is insert.
+     *
      * @param ProductCreateEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductInsert(ProductCreateEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductInsert(ProductCreateEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $product = $event->getProduct();
         $defaultTitle = '';
@@ -46,7 +49,7 @@ class ProductsListener
         foreach ($langs as $lang) {
             $productTranslated = $product->getTranslation($lang->getLocale());
 
-            $dataProduct[] = ProductsData::formatProduct($product, $productTranslated, $productDefault, $dispatcher);
+            $dataProduct[] = $this->productsData->formatProduct($product, $productTranslated, $productDefault, $dispatcher);
 
             if (!empty($productTranslated->getTitle())) {
                 $defaultTitle = $productTranslated->getTitle();
@@ -60,7 +63,7 @@ class ProductsListener
         $dataProductSaleElement = [];
         foreach ($productSales as $productSale) {
             foreach ($langs as $lang) {
-                $dataProductSaleElement[] = ProductsVariationsData::formatProductVariation($productSale, $dispatcher, $defaultTitle, $lang->getLocale());
+                $dataProductSaleElement[] = $this->productsVariationsData->formatProductVariation($productSale, $dispatcher, $defaultTitle, $lang->getLocale());
             }
         }
         $response = SpmProductsVariations::bulkSave(Utils::getAuth(), $product->getId(), $dataProductSaleElement);
@@ -72,10 +75,8 @@ class ProductsListener
      * Synchronizes data after a product is updated.
      *
      * @param ProductUpdateEvent $event the event object triggering the action
-     * @param EventDispatcherInterface $dispatcher
-     * @return void
      */
-    public static function postProductUpdate(ProductUpdateEvent $event, EventDispatcherInterface $dispatcher): void
+    public function postProductUpdate(ProductUpdateEvent $event, EventDispatcherInterface $dispatcher): void
     {
         $product = $event->getProduct();
 
@@ -86,7 +87,7 @@ class ProductsListener
         $data = [];
         foreach ($langs as $lang) {
             $productTranslated = $product->getTranslation($lang->getLocale());
-            $data[] = ProductsData::formatProduct($product, $productTranslated, $productDefault, $dispatcher);
+            $data[] = $this->productsData->formatProduct($product, $productTranslated, $productDefault, $dispatcher);
         }
         $response = SpmProducts::bulkUpdate(Utils::getAuth(), $data);
         Utils::handleResponse($response);
@@ -97,9 +98,8 @@ class ProductsListener
      * Synchronizes data after a product is deleted.
      *
      * @param ProductEvent $event the event object triggering the action
-     * @return void
      */
-    public static function postProductDelete(ProductEvent $event): void
+    public function postProductDelete(ProductEvent $event): void
     {
         $product = $event->getModel()->getId();
 

@@ -24,11 +24,8 @@ class OrdersData
 {
     /**
      * Formats the order data to match the Shopimind format.
-     *
-     * @param Order $order
-     * @return array
      */
-    public static function formatOrder(Order $order): array
+    public function formatOrder(Order $order): array
     {
         $country = Country::getShopLocation();
         $orderCoupon = OrderCouponQuery::create()->findOneByOrderId($order->getId());
@@ -83,11 +80,8 @@ class OrdersData
 
     /**
      * Retrieves order products.
-     *
-     * @param int $cartId
-     * @return array
      */
-    public static function getProducts(int $cartId): array
+    public function getProducts(int $cartId): array
     {
         $response = [];
 
