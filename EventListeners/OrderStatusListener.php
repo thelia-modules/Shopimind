@@ -1,86 +1,96 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\EventListeners;
 
-require_once __DIR__ . '/../vendor-module/autoload.php';
+require_once \dirname(__DIR__).'/vendor-module/autoload.php';
 
-use Thelia\Model\Event\OrderStatusEvent;
+use Shopimind\Data\OrderStatusData;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmOrdersStatus;
-use Shopimind\Data\OrderStatusData;
 use Thelia\Model\Base\LangQuery;
-
+use Thelia\Model\Event\OrderStatusEvent;
 
 class OrderStatusListener
 {
-    /**
-     * Synchronizes data after a order status is inserted.
-     *
-     * @param OrderStatusEvent $event The event object triggering the action.
-     */
-    public static function postOrderStatusInsert(OrderStatusEvent $event): void
+    public function __construct(private OrderStatusData $orderStatusData)
     {
-        $orderStatus = $event->getModel();
-
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $orderStatusDefault = $orderStatus->getTranslation( $defaultLocal );
-
-        $data = [];
-
-        foreach ( $langs as $lang ) {
-            $orderStatusTranslated = $orderStatus->getTranslation( $lang->getLocale() );
-
-            $data[] = OrderStatusData::formatOrderStatus( $orderStatus, $orderStatusTranslated, $orderStatusDefault );
-        }
-
-        $response = SpmOrdersStatus::bulkSave( Utils::getAuth(), $data );
-        
-        Utils::handleResponse( $response );
-
-        Utils::log( 'OrderStatus', 'Save', json_encode( $response ), $orderStatus->getId() );
     }
 
     /**
-     * Synchronizes data after a order status is updated.
+     * Synchronizes data after an order status is inserted.
      *
-     * @param OrderStatusEvent $event The event object triggering the action.
+     * @param OrderStatusEvent $event the event object triggering the action
      */
-    public static function postOrderStatusUpdate(OrderStatusEvent $event): void
+    public function postOrderStatusInsert(OrderStatusEvent $event): void
     {
         $orderStatus = $event->getModel();
 
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $orderStatusDefault = $orderStatus->getTranslation( $defaultLocal );
+        $langs = LangQuery::create()->filterByActive(1)->find();
 
         $data = [];
 
-        foreach ( $langs as $lang ) {
-            $orderStatusTranslated = $orderStatus->getTranslation( $lang->getLocale() );
+        foreach ($langs as $lang) {
+            $orderStatusTranslated = $orderStatus->getTranslation($lang->getLocale());
 
-            $data[] = OrderStatusData::formatOrderStatus( $orderStatus, $orderStatusTranslated, $orderStatusDefault );
+            $data[] = $this->orderStatusData->formatOrderStatus($orderStatus, $orderStatusTranslated);
         }
-        
-        $response = SpmOrdersStatus::bulkUpdate( Utils::getAuth(), $data );
-        
-        Utils::handleResponse( $response );
 
-        Utils::log( 'OrderStatus', 'Update', json_encode( $response ), $orderStatus->getId() );
+        $response = SpmOrdersStatus::bulkSave(Utils::getAuth(), $data);
+
+        Utils::handleResponse($response);
+
+        Utils::log('OrderStatus', 'Save', json_encode($response), $orderStatus->getId());
     }
 
     /**
-     * Synchronizes data after a order status is deleted.
+     * Synchronizes data after an order status is updated.
      *
-     * @param OrderStatusEvent $event The event object triggering the action.
+     * @param OrderStatusEvent $event the event object triggering the action
      */
-    public static function postOrderStatusDelete(OrderStatusEvent $event): void
+    public function postOrderStatusUpdate(OrderStatusEvent $event): void
+    {
+        $orderStatus = $event->getModel();
+
+        $langs = LangQuery::create()->filterByActive(1)->find();
+
+        $data = [];
+
+        foreach ($langs as $lang) {
+            $orderStatusTranslated = $orderStatus->getTranslation($lang->getLocale());
+
+            $data[] = $this->orderStatusData->formatOrderStatus($orderStatus, $orderStatusTranslated);
+        }
+
+        $response = SpmOrdersStatus::bulkUpdate(Utils::getAuth(), $data);
+
+        Utils::handleResponse($response);
+
+        Utils::log('OrderStatus', 'Update', json_encode($response), $orderStatus->getId());
+    }
+
+    /**
+     * Synchronizes data after an order status is deleted.
+     *
+     * @param OrderStatusEvent $event the event object triggering the action
+     */
+    public function postOrderStatusDelete(OrderStatusEvent $event): void
     {
         $orderStatus = $event->getModel()->getId();
 
-        $response = SpmOrdersStatus::delete( Utils::getAuth(), $orderStatus );
-        
-        Utils::handleResponse( $response );
+        $response = SpmOrdersStatus::delete(Utils::getAuth(), $orderStatus);
 
-        Utils::log( 'OrderStatus', 'Delete', json_encode( $response ), $orderStatus );
+        Utils::handleResponse($response);
+
+        Utils::log('OrderStatus', 'Delete', json_encode($response), $orderStatus);
     }
 }

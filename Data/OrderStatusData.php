@@ -1,5 +1,15 @@
 <?php
 
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\Data;
 
 use Thelia\Model\OrderStatus;
@@ -9,21 +19,16 @@ class OrderStatusData
 {
     /**
      * Formats the order status data to match the Shopimind format.
-     *
-     * @param OrderStatus $orderStatus
-     * @param OrderStatusI18n $orderStatusTranslated
-     * @param OrderStatusI18n $orderStatusDefault
-     * @return array
      */
-    public static function formatOrderStatus( OrderStatus $orderStatus, OrderStatusI18n $orderStatusTranslated, OrderStatusI18n $orderStatusDefault ): array
+    public function formatOrderStatus(OrderStatus $orderStatus, OrderStatusI18n $orderStatusTranslated): array
     {
         return [
-            'status_id' => strval( $orderStatus->getId() ),
-            'lang' => substr( $orderStatusTranslated->getLocale()  , 0, 2 ),
+            'status_id' => (string) $orderStatus->getId(),
+            'lang' => substr($orderStatusTranslated->getLocale(), 0, 2),
             'name' => $orderStatus->getCode(),
-            'is_deleted'=> false,
+            'is_deleted' => false,
             'created_at' => $orderStatus->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            'updated_at' => $orderStatus->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+            'updated_at' => $orderStatus->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
         ];
     }
 }

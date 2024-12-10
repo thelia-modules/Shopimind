@@ -1,58 +1,71 @@
 <?php
+
+/*
+ * This file is part of the Thelia package.
+ * http://www.thelia.net
+ *
+ * (c) OpenStudio <info@thelia.net>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Shopimind\EventListeners;
 
-require_once __DIR__ . '/../vendor-module/autoload.php';
+require_once \dirname(__DIR__).'/vendor-module/autoload.php';
 
-use Thelia\Model\Event\NewsletterEvent;
-use Shopimind\Model\Base\ShopimindQuery;
+use Shopimind\Data\NewsletterSubscribersData;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmNewsletterSubscribers;
-use Shopimind\Data\NewsletterSubscribersData;
-
+use Thelia\Model\Event\NewsletterEvent;
 
 class NewsletterSubscribersListener
 {
+    public function __construct(private NewsletterSubscribersData $newsletterSubscribersData)
+    {
+    }
+
     /**
      * Synchronizes data after a newsletter subscription is inserted.
      *
-     * @param NewsletterEvent $event The event object triggering the action.
+     * @param NewsletterEvent $event the event object triggering the action
      */
-    public static function postNewsletterInsert(NewsletterEvent $event): void
+    public function postNewsletterInsert(NewsletterEvent $event): void
     {
         $newsletter = $event->getModel();
 
-        $data[] = NewsletterSubscribersData::formatNewsletterSubscriber( $newsletter );
-        $response = SpmNewsletterSubscribers::bulkSave( Utils::getAuth(), $data );
-        Utils::handleResponse( $response );
-        Utils::log( 'NewsletterSubscribers', 'Insert', json_encode( $response ), $newsletter->getId() );
+        $data[] = $this->newsletterSubscribersData->formatNewsletterSubscriber($newsletter);
+        $response = SpmNewsletterSubscribers::bulkSave(Utils::getAuth(), $data);
+        Utils::handleResponse($response);
+        Utils::log('NewsletterSubscribers', 'Insert', json_encode($response), $newsletter->getId());
 
-        $customer = NewsletterSubscribersData::customerData( $newsletter->getEmail() );
-        if ( !empty( $customer ) ) {
-            $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
-            Utils::handleResponse( $response );
-            Utils::log( 'Customer', 'Update', json_encode( $response ), $newsletter->getId() );
+        $customer = $this->newsletterSubscribersData->customerData($newsletter->getEmail());
+        if (!empty($customer)) {
+            $response = SpmNewsletterSubscribers::bulkUpdate(Utils::getAuth(), $data);
+            Utils::handleResponse($response);
+            Utils::log('Customer', 'Update', json_encode($response), $newsletter->getId());
         }
     }
 
     /**
      * Synchronizes data after a newsletter subscription is updated.
      *
-     * @param NewsletterEvent $event The event object triggering the action.
+     * @param NewsletterEvent $event the event object triggering the action
      */
-    public static function postNewsletterUpdate(NewsletterEvent $event): void
+    public function postNewsletterUpdate(NewsletterEvent $event): void
     {
         $newsletter = $event->getModel();
 
-        $data[] = NewsletterSubscribersData::formatNewsletterSubscriber( $newsletter );
-        $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
-        Utils::handleResponse( $response );
-        Utils::log( 'NewsletterSubscribers', 'Update', json_encode( $response ), $newsletter->getId() );
+        $data[] = $this->newsletterSubscribersData->formatNewsletterSubscriber($newsletter);
+        $response = SpmNewsletterSubscribers::bulkUpdate(Utils::getAuth(), $data);
+        Utils::handleResponse($response);
+        Utils::log('NewsletterSubscribers', 'Update', json_encode($response), $newsletter->getId());
 
-        $customer = NewsletterSubscribersData::customerData( $newsletter->getEmail() );
-        if ( !empty( $customer ) ) {
-            $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
-            Utils::handleResponse( $response );
-            Utils::log( 'Customer', 'Update', json_encode( $response ), $newsletter->getId() );
+        $customer = $this->newsletterSubscribersData->customerData($newsletter->getEmail());
+        if (!empty($customer)) {
+            $response = SpmNewsletterSubscribers::bulkUpdate(Utils::getAuth(), $data);
+            Utils::handleResponse($response);
+            Utils::log('Customer', 'Update', json_encode($response), $newsletter->getId());
         }
     }
 }
