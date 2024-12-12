@@ -78,6 +78,7 @@ class ShopimindSyncStatus extends BaseShopimindSyncStatus
                 'sent_failed_count' => 0,
                 'last_sync_update' => null,
                 'last_object_update' => null,
+                'relaunch_count' => 0,
             ];
         }
 

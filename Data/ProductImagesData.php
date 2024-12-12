@@ -7,6 +7,7 @@ use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Thelia\Model\Base\Lang;
+use Thelia\Model\ConfigQuery;
 
 class ProductImagesData
 {
@@ -39,21 +40,8 @@ class ProductImagesData
                 'is_default' => false,
             ];
         } else if ( $action == 'update') {
-            $url = '';
+            $url = self::getImageUrl( $productImage, $dispatcher);
             
-            try {
-                $imgSourcePath = $productImage->getUploadDir().DS.$productImage->getFile();
-    
-                $productImageEvent = new ImageEvent();
-                $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product_image');
-        
-                $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
-                $url = $productImageEvent->getFileUrl();    
-            } catch (\Throwable $th) {
-                $url = null;
-            }
-            
-
             $productSaleElementsProductImages = $productImage->getProductSaleElementsProductImages()->getFirst();
     
             $data = [
@@ -66,7 +54,76 @@ class ProductImagesData
                 'updated_at' => $productImage->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
             ];
         }
-
+        
         return $data;
+    }
+
+    /**
+     * Retrieves image url 
+     *
+     * @param ProductImage $productImage
+     * @param EventDispatcherInterface $dispatcher
+     * 
+     */
+    public static function getImageUrl( ProductImage $productImage, $dispatcher ){
+
+        if ( !empty( $productImage ) ) {
+            try {
+                $imgSourcePath = $productImage->getUploadDir().DS.$productImage->getFile();
+    
+                $productImageEvent = new ImageEvent();
+                $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product_image');
+        
+                $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
+                $url = $productImageEvent->getFileUrl();    
+
+                return $url;
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+
+            try {
+                $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
+                $cacheSubdirectory = '/product/';
+                $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
+                $pattern = $cacheDirectory . '*-' . strtolower($productImage->getFile());
+                $cachedFiles = glob($pattern);
+                if (!empty($cachedFiles)) {
+                    $largestFile = null;
+                    $largestSize = 0;
+
+                    foreach ($cachedFiles as $file) {
+                        if (file_exists($file)) {
+                            $size = filesize($file);
+                            if ($size > $largestSize) {
+                                $largestSize = $size;
+                                $largestFile = $file;
+                            }
+                        }
+                    }
+
+                    $fileName = basename($largestFile);
+                    $sourceFilePath = sprintf(
+                        "%s%s/%s/%s",
+                        THELIA_ROOT,
+                        ConfigQuery::read('image_cache_dir_from_web_root'),
+                        "product",
+                        $fileName
+                    );
+                
+                    $productImageEvent = new ImageEvent();
+                    $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
+                    
+                    $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
+                    $url = $productImageEvent->getFileUrl();
+
+                    return $url;
+                }
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+        }
+
+        return null;
     }
 }

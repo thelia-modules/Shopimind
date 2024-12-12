@@ -200,7 +200,7 @@ class SyncProductsImages extends AbstractController
 
                         Utils::handleResponse( $response );
         
-                        Utils::log( 'productImage' , 'passive synchronization', json_encode( $value ) );
+                        Utils::log( 'productImage' , 'passive synchronization', json_encode( $response ) );
                     }
                 }
             } while ( $hasMore );

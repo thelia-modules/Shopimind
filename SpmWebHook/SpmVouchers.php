@@ -5,12 +5,17 @@ namespace Shopimind\SpmWebHook;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Thelia\Model\Coupon;
+use Thelia\Model\CouponI18n;
+use Thelia\Model\CouponModule;
+use Thelia\Model\CouponCountry;
+use Thelia\Model\CouponQuery;
+use Thelia\Model\CouponCountryQuery;
+use Thelia\Model\CouponModuleQuery;
 use Thelia\Model\CustomerQuery;
 use Thelia\Model\CurrencyQuery;
 use Thelia\Model\LangQuery;
 use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\lib\Utils;
-use Thelia\Model\CouponI18n;
 
 class SpmVouchers
 {
@@ -31,9 +36,6 @@ class SpmVouchers
         $defaultCurrency = CurrencyQuery::create()->findOneByByDefault(true)->getCode();
         $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
 
-        $status = true;
-        $message = "Voucher created successfully.";
-
         $emails = ( array_key_exists('voucherEmails', $body) ) ? $body['voucherEmails'] : '';
         $voucherInfos = ( array_key_exists('voucherInfos', $body) ) ? $body['voucherInfos'] : '';
 
@@ -48,12 +50,15 @@ class SpmVouchers
         $minimumOrder = ( array_key_exists('minimumOrder', $voucherInfos ) ) ? $voucherInfos['minimumOrder'] : '';
         $nbDayValidate = $voucherInfos['nbDayValidate'];
         $code = $voucherInfos['codeToGenerate'];
-        // $duplicateCode = ( array_key_exists('duplicateCode', $voucherInfos ) ) ? $voucherInfos['duplicateCode'] : '';
+        $duplicateCode = ( array_key_exists('duplicateCode', $voucherInfos ) ) ? $voucherInfos['duplicateCode'] : '';
         // $dynamicPrefix = ( array_key_exists('dynamicPrefix', $voucherInfos ) ) ? $voucherInfos['dynamicPrefix'] : '';
 
         $isRemovingPostage = 0;
         $typeFormat = "";
         $effects = [];
+        $isCumulative = ( $config->getCumulativeVouchers() ) ? 1 : 0;
+        $condition = [];
+        $couponToDuplicate = null;
         switch ( $type ) {
             case 'percent':
                 $effects = [
@@ -69,13 +74,34 @@ class SpmVouchers
                 $typeFormat = "thelia.coupon.type.remove_x_amount";
                 break;
 
-            case 'free_shipping':
+            case 'shipping':
                 $effects = [
-                    'amount' => $amount
+                    'amount' => 0,
                 ];
                 $typeFormat = "thelia.coupon.type.remove_x_amount";
                 $isRemovingPostage = 1;
                 break;
+
+            case 'duplicateCode':
+                $couponToDuplicate = CouponQuery::create()
+                    ->filterByCode( $duplicateCode )
+                    ->findOne();
+                
+                if ( empty( $couponToDuplicate ) ) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'message' => 'No coupon found for the code: ' . $duplicateCode,
+                    ]);
+                }
+
+                $currency = self::getCurreny( $couponToDuplicate->getSerializedConditions() );
+                $typeFormat = $couponToDuplicate->getType();
+                $effects = $couponToDuplicate->getEffects();
+                $isRemovingPostage = $couponToDuplicate->getIsRemovingPostage();
+                $isCumulative = $couponToDuplicate->isCumulative();
+                $condition = self::getCondition( $couponToDuplicate->getSerializedConditions() );
+                break;
+
             default : 
                 $effects = [
                     'amount' => $amount
@@ -84,7 +110,6 @@ class SpmVouchers
                 break;
         }
 
-        $condition = [];
         $minimuOrderCondition = "";
         if ( !empty( $minimumOrder ) ) {
             $minimuOrderCondition = [
@@ -103,8 +128,8 @@ class SpmVouchers
 
         $customerCondition = "";
         $customersIds = [];
-        if ( !empty($emails) ) {
-            foreach ($emails as $value) {
+        if ( !empty( $emails ) ) {
+            foreach ( $emails as $value ) {
                 if ( array_key_exists('email', $value ) ) {
                     $customer = CustomerQuery::create()->findOneByEmail( $value['email'] );
                     $customerId = !empty( $customer ) ? $customer->getId() : "";
@@ -114,7 +139,7 @@ class SpmVouchers
                 }
             }
         }
-        if ( !empty($customersIds) && $config->getNominativeReductions() ) {
+        if ( !empty( $customersIds ) && $config->getNominativeReductions() ) {
             $customerCondition = [
                 'conditionServiceId' => 'thelia.condition.for_some_customers',
                 'operators' => [
@@ -131,7 +156,6 @@ class SpmVouchers
                 'values' => []
             ];
         }
-
         array_push( $condition, $customerCondition );
 
         $startDate = date('Y-m-d H:i:s');
@@ -147,17 +171,14 @@ class SpmVouchers
             )
         );
 
-        $description = "Code de réduction";
-
+        $description = "Discount Code";
         if ( !empty( $emails ) ) {
-            foreach ($emails as $value) {
+            foreach ( $emails as $value ) {
                 if ( array_key_exists('description', $value ) ) {
                     $description = $value['description'];
                 }
             }
         }
-
-        $isCumulative = ( $config->getCumulativeVouchers() ) ? 1 : 0;
 
         $coupon = new Coupon();
         $coupon->setCode( $code );
@@ -185,6 +206,11 @@ class SpmVouchers
 
         try {
             $coupon->save();
+
+            if ( $type === 'duplicateCode' && !empty( $couponToDuplicate ) ) {
+                self::duplicateCouponCountryAssociations( $couponToDuplicate->getId(), $coupon->getId() );
+                self::duplicateCouponModuleAssociations( $couponToDuplicate->getId(), $coupon->getId() );
+            }
 
             self::generateTranslation( $coupon, $description );
         } catch (\Throwable $th) {
@@ -272,6 +298,106 @@ class SpmVouchers
             } catch (\Throwable $th) {
                 //throw $th;
             }
+        }
+    }
+
+    /**
+     * Retrieve the currency of a voucher
+     *
+     * @param string $serializedConditions
+     * @return string | null
+     */
+    public static function getCurreny( string $serializedConditions )
+    {
+        $condition = json_decode( base64_decode( $serializedConditions ), true );
+
+        if ( $condition !== null ) {
+            $currency = $condition[0]['values']['currency'] ?? null;
+
+            if ( $currency !== null ) {
+                return $currency;
+            }
+        } 
+
+        return 'EUR';
+    }
+
+    /**
+     * Excluding specific condition types
+     *
+     * @param string $serializedConditions
+     * @return array
+     */
+    public static function getCondition( string $serializedConditions )
+    {
+        $conditionToExlude = [
+            "thelia.condition.match_for_total_amount",
+            "thelia.condition.match_for_everyone",
+            "thelia.condition.for_some_customers"
+        ];
+        
+        $condition = json_decode( base64_decode( $serializedConditions ), true );
+
+        if ( $condition !== null ) {
+            $condition = array_filter($condition, function ( $data ) use ( $conditionToExlude ) {
+                return !in_array( $data['conditionServiceId'], $conditionToExlude );
+            });
+            
+            return $condition;
+        } 
+
+        return [];
+    }
+
+    /**
+     * Duplicate coupon-country associations for a new coupon.
+     *
+     * @param int $couponToDuplicate The ID of the coupon to duplicate.
+     * @param int $newCouponId The ID of the new coupon.
+     * @return void
+     */
+    public static function duplicateCouponCountryAssociations( int $couponToDuplicate, int $newCouponId )
+    {
+        $associations = CouponCountryQuery::create()
+            ->filterByCouponId( $couponToDuplicate )
+            ->find();
+
+        if ($associations->isEmpty()) {
+            return;
+        }
+
+        foreach ( $associations as $association ) {
+            $newAssociation = new CouponCountry();
+            $newAssociation
+                ->setCouponId( $newCouponId )
+                ->setCountryId( $association->getCountryId() );
+            $newAssociation->save();
+        }
+    }
+
+    /**
+     * Duplicate coupon-module associations for a new coupon.
+     *
+     * @param int $couponToDuplicate The ID of the coupon to duplicate.
+     * @param int $newCouponId The ID of the new coupon.
+     * @return void
+     */
+    public static function duplicateCouponModuleAssociations(int $couponToDuplicate, int $newCouponId)
+    {
+        $associations = CouponModuleQuery::create()
+            ->filterByCouponId($couponToDuplicate)
+            ->find();
+
+        if ( $associations->isEmpty() ) {
+            return;
+        }
+
+        foreach ( $associations as $association ) {
+            $newAssociation = new CouponModule();
+            $newAssociation
+                ->setCouponId( $newCouponId )
+                ->setModuleId( $association->getModuleId() );
+            $newAssociation->save();
         }
     }
 }

@@ -13,6 +13,7 @@ use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
 use Thelia\Model\Base\ProductSaleElementsProductImageQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Thelia\Model\Country;
 
 
 class ProductsVariationsData
@@ -52,9 +53,9 @@ class ProductsVariationsData
             "reference" => $productVariation->getRef(),
             "ean13" => ( !empty( $productVariation->getEanCode() ) ) ? $productVariation->getEanCode() : null,
             "link" => $productVariation->getProduct()->getUrl( $locale ),
-            "image_link" => self::getDefaultImage( $productVariation->getId(), $productVariation->getProduct()->getId(), $dispatcher ),
-            "price" => self::getPrice( $productVariation->getId() ),
-            "price_discount" => self::getPromoPrice( $productVariation->getId() ),
+            "image_link" => self::getDefaultImage( $productVariation->getId(), $productVariation->getProduct()->getId(), $dispatcher )  ?? "https://placehold.co/300x300",
+            "price" => $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $productVariation->getId() ) ),
+            "price_discount" => $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), self::getPromoPrice( $productVariation->getId() ) ),
             "quantity_remaining" => $productVariation->getQuantity() ?? 0,
             "is_default" => ( bool ) $productVariation->getIsDefault(),
             "created_at" => $productVariation->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
@@ -132,12 +133,53 @@ class ProductsVariationsData
                     $imgSourcePath = $imagePath;
                 
                     $productImageEvent = new ImageEvent();
-                    $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product_image');
+                    $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product');
             
                     $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
                     $url = $productImageEvent->getFileUrl();
             
                     return $url;    
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
+
+                try {
+                    $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
+                    $cacheSubdirectory = '/product/';
+                    $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
+                    $pattern = $cacheDirectory . '*-' . strtolower($defaultImage->getFile());
+                    $cachedFiles = glob($pattern);
+                    if (!empty($cachedFiles)) {
+                        $largestFile = null;
+                        $largestSize = 0;
+    
+                        foreach ($cachedFiles as $file) {
+                            if (file_exists($file)) {
+                                $size = filesize($file);
+                                if ($size > $largestSize) {
+                                    $largestSize = $size;
+                                    $largestFile = $file;
+                                }
+                            }
+                        }
+    
+                        $fileName = basename($largestFile);
+                        $sourceFilePath = sprintf(
+                            "%s%s/%s/%s",
+                            THELIA_ROOT,
+                            ConfigQuery::read('image_cache_dir_from_web_root'),
+                            "product",
+                            $fileName
+                        );
+                    
+                        $productImageEvent = new ImageEvent();
+                        $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
+                        
+                        $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
+                        $url = $productImageEvent->getFileUrl();
+    
+                        return $url;
+                    }
                 } catch (\Throwable $th) {
                     //throw $th;
                 }

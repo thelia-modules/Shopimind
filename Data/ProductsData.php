@@ -15,6 +15,7 @@ use Shopimind\Model\Base\ShopimindQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Thelia\Core\Event\Image\ImageEvent;
 use Thelia\Core\Event\TheliaEvents;
+use Thelia\Model\Country;
 
 class ProductsData
 {
@@ -50,9 +51,9 @@ class ProductsData
             "category_ids" => self::formatCategoriesIds( $product->getProductCategories() ),
             "manufacturer_id" =>  ( !empty( $product->getBrandId() ) ) ? strval( $product->getBrandId( ) ) : null,
             "currency" => self::getCurrency( $product->getId() ),
-            "image_link" => self::getDefaultImage( $product->getId(), $dispatcher ) ?? "https://placehold.co/300x300", // TODO : fix it
-            "price" => self::getPrice( $product->getId() ),
-            "price_discount" => self::getPromoPrice( $product->getId() ),
+            "image_link" => self::getDefaultImage( $product->getId(), $dispatcher ) ?? "https://placehold.co/300x300",
+            "price" => $product->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $product->getId() ) ),
+            "price_discount" => $product->getTaxedPrice( Country::getDefaultCountry(), self::getPromoPrice( $product->getId() ) ),
             "quantity_remaining" => $quantity,
             "is_active" => $active,
             "created_at" => $product->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
@@ -221,22 +222,64 @@ class ProductsData
             ->filterByProductId($productId)
             ->filterByPosition(1)
             ->findOne();
-        
+
         if ( !empty( $defaultImage ) ) {
             try {
                 $imagePath = ConfigQuery::read('images_library_path') . DIRECTORY_SEPARATOR . 'product' . DIRECTORY_SEPARATOR . $defaultImage->getFile();
                 $imgSourcePath = $imagePath;
             
                 $productImageEvent = new ImageEvent();
-                $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product_image');
+                $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product');
         
                 $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
                 $url = $productImageEvent->getFileUrl();
         
                 return $url;
             } catch (\Throwable $th) {
-                //throw $th;
+                // throw $th;
                 Utils::log('ImageProduct', 'Error', $th->getMessage(), $productId);
+            }
+
+            try {
+                $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
+                $cacheSubdirectory = '/product/';
+                $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
+                $pattern = $cacheDirectory . '*-' . strtolower($defaultImage->getFile());
+                $cachedFiles = glob($pattern);
+                if (!empty($cachedFiles)) {
+                    $largestFile = null;
+                    $largestSize = 0;
+
+                    foreach ($cachedFiles as $file) {
+                        if (file_exists($file)) {
+                            $size = filesize($file);
+                            if ($size > $largestSize) {
+                                $largestSize = $size;
+                                $largestFile = $file;
+                            }
+                        }
+                    }
+
+                    $fileName = basename($largestFile);
+                    $sourceFilePath = sprintf(
+                        "%s%s/%s/%s",
+                        THELIA_ROOT,
+                        ConfigQuery::read('image_cache_dir_from_web_root'),
+                        "product",
+                        $fileName
+                    );
+                
+                    $productImageEvent = new ImageEvent();
+                    $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
+                    
+                    $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
+                    $url = $productImageEvent->getFileUrl();
+
+                    return $url;
+                }
+            } catch (\Throwable $th) {
+                //throw $th;
+                Utils::log('ImageProduct (Cache)', 'Error', $th->getMessage(), $productId);
             }
         }
 

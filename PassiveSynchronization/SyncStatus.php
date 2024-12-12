@@ -125,6 +125,7 @@ class SyncStatus
                 $statuses = $syncStatus->getStatuses();
                 if ( !empty( $statuses ) && isset($statuses[$object]) ) {
                     $statuses[ $object ]['status'] = 'failed';
+                    $statuses[ $object ]['relaunch_count'] = intval( $statuses[ $object ]['relaunch_count'] ) + 1;
                     $syncStatus->setStatuses( $statuses );
                     $syncStatus->save();
 
