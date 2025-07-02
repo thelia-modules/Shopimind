@@ -21,7 +21,7 @@ class Shopimind extends BaseModule
     {
         if ( !self::getConfigValue('is_initialized', false) ) {
             $database = new Database($con);
-            
+
             $database->insertSql(null, [__DIR__.'/Config/TheliaMain.sql']);
 
             self::setConfigValue('is_initialized', true);
@@ -44,10 +44,7 @@ class Shopimind extends BaseModule
     public static function configureServices(ServicesConfigurator $servicesConfigurator): void
     {
         $servicesConfigurator->load(self::getModuleCode().'\\', __DIR__)
-            ->exclude([
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()). "/I18n/*",
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()) . "/PassiveSynchronization/Scripts/*"    
-            ])
+            ->exclude(["/I18n/*"])
             ->autowire(true)
             ->autoconfigure(true);
     }
