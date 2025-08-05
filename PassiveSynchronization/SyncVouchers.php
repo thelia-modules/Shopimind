@@ -11,6 +11,7 @@ use Shopimind\SdkShopimind\SpmVoucher;
 use Shopimind\Data\VouchersData;
 use Symfony\Component\HttpFoundation\Request;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncVouchers
 {
@@ -195,6 +196,8 @@ class SyncVouchers
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'vouchers', $objectStatus );  
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'vouchers', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

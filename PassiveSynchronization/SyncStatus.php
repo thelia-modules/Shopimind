@@ -154,6 +154,65 @@ class SyncStatus
     }
 
     /**
+     * Reset the running status of a specific object.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public static function resetRunningStatus( Request $request )
+    {
+        try {
+            $requestValidation = Utils::validateSpmRequest( $request );
+            if ( !empty( $requestValidation ) ) return $requestValidation;
+
+            $body = json_decode($request->getContent(), true);
+            
+            if (!isset($body['object'])) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Object parameter is required',
+                ]);
+            }
+
+            $allowedObjects = [
+                'customers',
+                'customers_addresses',
+                'customers_groups',
+                'newsletter_subscribers',
+                'orders',
+                'orders_statuses',
+                'products',
+                'products_images',
+                'products_categories',
+                'products_manufacturers',
+                'products_variations',
+                'vouchers',
+            ];
+
+            $object = $body['object'];
+            if ( !in_array( $object, $allowedObjects ) ) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Invalid object parameter',
+                ]);
+            }
+            
+            Utils::updateSynchronizationStatus($object, 0);
+            
+            return new JsonResponse([
+                'success' => true,
+                'message' => "Synchronization status for '$object' has been reset",
+            ]);
+        } catch (\Throwable $th) {
+            Utils::log('resetRunningStatus', 'passive synchronization', $th->getMessage());
+            
+            return new JsonResponse([
+                'success' =>  false,
+            ]);
+        }
+    }
+
+    /**
      * Validate request.
      *
      * @param Request $request

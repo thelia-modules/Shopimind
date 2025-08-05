@@ -5,7 +5,6 @@ namespace Shopimind\Data;
 use Thelia\Model\ProductQuery;
 use Thelia\Model\ProductPriceQuery;
 use Thelia\Model\CurrencyQuery;
-use Thelia\Model\ConfigQuery;
 use Thelia\Model\ProductImageQuery;
 use Thelia\Model\ProductSaleElementsQuery;
 use Shopimind\lib\Utils;
@@ -13,9 +12,8 @@ use Thelia\Model\Product;
 use Thelia\Model\Base\ProductI18n;
 use Shopimind\Model\Base\ShopimindQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Thelia\Core\Event\Image\ImageEvent;
-use Thelia\Core\Event\TheliaEvents;
 use Thelia\Model\Country;
+use Shopimind\Data\ProductImagesData;
 
 class ProductsData
 {
@@ -223,64 +221,8 @@ class ProductsData
             ->filterByPosition(1)
             ->findOne();
 
-        if ( !empty( $defaultImage ) ) {
-            try {
-                $imagePath = ConfigQuery::read('images_library_path') . DIRECTORY_SEPARATOR . 'product' . DIRECTORY_SEPARATOR . $defaultImage->getFile();
-                $imgSourcePath = $imagePath;
-            
-                $productImageEvent = new ImageEvent();
-                $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product');
-        
-                $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
-                $url = $productImageEvent->getFileUrl();
-        
-                return $url;
-            } catch (\Throwable $th) {
-                // throw $th;
-                Utils::log('ImageProduct', 'Error', $th->getMessage(), $productId);
-            }
-
-            try {
-                $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
-                $cacheSubdirectory = '/product/';
-                $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
-                $pattern = $cacheDirectory . '*-' . strtolower($defaultImage->getFile());
-                $cachedFiles = glob($pattern);
-                if (!empty($cachedFiles)) {
-                    $largestFile = null;
-                    $largestSize = 0;
-
-                    foreach ($cachedFiles as $file) {
-                        if (file_exists($file)) {
-                            $size = filesize($file);
-                            if ($size > $largestSize) {
-                                $largestSize = $size;
-                                $largestFile = $file;
-                            }
-                        }
-                    }
-
-                    $fileName = basename($largestFile);
-                    $sourceFilePath = sprintf(
-                        "%s%s/%s/%s",
-                        THELIA_ROOT,
-                        ConfigQuery::read('image_cache_dir_from_web_root'),
-                        "product",
-                        $fileName
-                    );
-                
-                    $productImageEvent = new ImageEvent();
-                    $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
-                    
-                    $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
-                    $url = $productImageEvent->getFileUrl();
-
-                    return $url;
-                }
-            } catch (\Throwable $th) {
-                //throw $th;
-                Utils::log('ImageProduct (Cache)', 'Error', $th->getMessage(), $productId);
-            }
+        if ($defaultImage !== null) {
+            return ProductImagesData::getImageUrl($defaultImage, $dispatcher);
         }
 
         return null;

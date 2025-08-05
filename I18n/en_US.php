@@ -33,4 +33,9 @@ return [
     'Enabling logs allows for the recording of system or application events, providing a record that can be used for troubleshooting.' => 'Enabling logs allows for the recording of system or application events, providing a record that can be used for troubleshooting.',
     'Does the synchronization of your data have to be done in real time ?' => 'Does the synchronization of your data have to be done in real time ?',
     'Use real-time synchronization' => 'Use real-time synchronization',
+    'Module connected to Shopimind.' => 'Module connected to Shopimind.',
+    'You must select at least one status.' => 'You must select at least one status.',
+    'Module not connected to Shopimind.' => 'Module not connected to Shopimind.',
+    'Confirmed order statuses' => 'Confirmed order statuses',
+    'Select order statuses to be considered as confirmed' => 'Select order statuses to be considered as confirmed',
 ];

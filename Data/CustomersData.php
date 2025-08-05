@@ -44,7 +44,8 @@ class CustomersData
             "is_newsletter_subscribed" => self::isNewsletterSubscribed( $customer->getEmail() ),
             "lang" => $lang,
             "group_ids" => !empty( $groupIds ) ? $groupIds : null,
-            "is_active" => ( bool ) $customer->getEnable(),
+//            "is_active" => ( bool ) $customer->getEnable(),
+            "is_active" => true,
             "created_at" => $customer->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
             "updated_at" => $customer->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
         ];

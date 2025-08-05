@@ -8,7 +8,7 @@ use Shopimind\lib\Utils;
 use Thelia\Model\OrderCouponQuery;
 use Thelia\Model\CartQuery;
 use Thelia\Model\Order;
-use Thelia\Model\Base\OrderStatusQuery;
+use Shopimind\Model\Base\ShopimindQuery;
 
 class OrdersData
 {
@@ -23,10 +23,12 @@ class OrdersData
         $country = Country::getShopLocation();
         $orderCoupon = OrderCouponQuery::create()->findOneByOrderId( $order->getId() );
         $cart = CartQuery::create()->findOneById( $order->getCartId() );
-        $paidStatus = OrderStatusQuery::create()->findOneByCode('paid');
-        $paidStatusId = ( !empty( $paidStatus ) ) ? $paidStatus->getId() : null;
+        $config = ShopimindQuery::create()->findOne();
+        $confirmedStatuses = !empty( $config ) && !empty( $config->getConfirmedStatuses() ) 
+            ? json_decode( $config->getConfirmedStatuses(), true ) 
+            : [];
         $isConfirmed = false;
-        if ( $paidStatusId == $order->getOrderStatus()->getId() ) {
+        if ( in_array( $order->getOrderStatus()->getId(), $confirmedStatuses ) ) {
             $isConfirmed = true;
         }
 
@@ -50,7 +52,7 @@ class OrdersData
             'lang' => $order->getLang()->getCode(),
             'reference' => $order->getRef(),
             'carrier_id' => null,
-            'status_id' => $order->getOrderStatus()->getCode(),
+            'status_id' => strval( $order->getOrderStatus()->getId() ),
             'address_delivery_id' => strval( $order->getDeliveryOrderAddressId() ),
             'address_invoice_id' => strval( $order->getInvoiceOrderAddressId() ),
             'customer' => $customer,

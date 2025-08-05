@@ -13,6 +13,7 @@ use Shopimind\Data\ProductsVariationsData;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsVariations extends AbstractController
 {
@@ -199,6 +200,12 @@ class SyncProductsVariations extends AbstractController
                                 "last_object_update" => $lastObjectUpdate,
                             ];
                             ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );  
+
+                            $errorData = $value;
+                            foreach ($errorData as &$item) {
+                                $item['product_id'] = $productId;
+                            }
+                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_variations', $response, $errorData );
                         }
 
                         Utils::handleResponse( $response );

@@ -13,6 +13,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProducts extends AbstractController
 {
@@ -196,11 +197,14 @@ class SyncProducts extends AbstractController
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );  
+                        
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products', $response, $data );
                     }
 
                     Utils::handleResponse( $response );
         
                     Utils::log( 'products' , 'passive synchronization' , json_encode( $response ) );
+
                 }
 
             } while ( $hasMore );

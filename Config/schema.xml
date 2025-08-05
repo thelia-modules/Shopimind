@@ -11,6 +11,7 @@
             <column name="out_of_stock_product_disabling" type="BOOLEAN" />
             <column name="script_tag" type="BOOLEAN" />
             <column name="is_connected" type="BOOLEAN" />
+            <column name="confirmed_statuses" type="LONGVARCHAR" />
             <column name="log" type="BOOLEAN" />
         </table>
 
@@ -20,6 +21,16 @@
           <column name="global_state" type="VARCHAR" size="50"  />
           <column name="first_call" type="TIMESTAMP" />
           <column name="statuses" type="JSON" />
+        </table>
+  
+        <table name="shopimind_sync_errors">
+          <column name="id" type="BIGINT" primaryKey="true" autoIncrement="true" />
+          <column name="id_shop_ask_syncs" type="BIGINT" />
+          <column name="object_type" type="VARCHAR" size="50" />
+          <column name="error_code" type="INTEGER" />
+          <column name="error_message" type="JSON" />
+          <column name="data" type="JSON" />
+          <column name="timestamp" type="TIMESTAMP" />
         </table>
   <external-schema filename="local/config/schema.xml" referenceOnly="true" />
 </database>

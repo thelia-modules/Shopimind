@@ -53,7 +53,19 @@ class ShopimindHook extends BaseHook
             $order = OrderQuery::create()->findOneByCartId( $idCart );
             $confirm_cart_to_order = !empty($order) ? $idCart.';'.$order->getId() : null;
         }
-            
+
+        $cartData = [
+            'id_customer' => !empty( $idCart ) ? $cart->getCustomerId()  : null,
+            'id_cart' => $idCart,
+            'date_add' => !empty( $idCart ) ? $cart->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z')  : null,
+            'date_upd' => !empty( $idCart ) ? $cart->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')  : null,
+            'amount' => !empty( $idCart ) ? $cart->getTaxedAmount( $country )  : null,
+            'tax_rate' => !empty( $idCart ) ? $cart->getCurrency()->getCurrentTranslation()  : null,
+            'currency' => !empty( $idCart ) ? $cart->getCurrency()->getCode()  : null,
+            'voucher_used' => null, //Après commande
+            'voucher_amount' => null, //Après commande
+            'products' => !empty( $idCart ) ? self::getProducts( $cart->getId() ) : null,
+        ];
 
         $currentUserInfos = [
             'url' => $url,
@@ -63,24 +75,21 @@ class ShopimindHook extends BaseHook
             'spm_ident' => $spmIdent,
             'user' => $user,
             'id_cart' => $idCart,
-            'cart' => [
-                'id_customer' => !empty( $idCart ) ? $cart->getCustomerId()  : null,
-                'id_cart' => $idCart,
-                'date_add' => !empty( $idCart ) ? $cart->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z')  : null,
-                'date_upd' => !empty( $idCart ) ? $cart->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')  : null,
-                'amount' => !empty( $idCart ) ? $cart->getTaxedAmount( $country )  : null,
-                'tax_rate' => !empty( $idCart ) ? $cart->getCurrency()->getCurrentTranslation()  : null,
-                'currency' => !empty( $idCart ) ? $cart->getCurrency()->getCode()  : null,
-                'voucher_used' => null, //Après commande
-                'voucher_amount' => null, //Après commande
-                'products' => !empty( $idCart ) ? self::getProducts( $cart->getId() ) : null,
-            ],
+            'cart' => $cartData,
             'confirm_cart_to_order' => $confirm_cart_to_order,
         ];
-
+        try {
+            $language = substr($this->getRequest()->getSession()->getLang()->getLocale(), 0, 2) ?: 'fr';
+        } catch (\Exception $e) {
+            $language = 'fr';
+        }
         $base_url = 'https://app-spm.com/app.js';
         $currentUserInfos = json_encode( $currentUserInfos );
-        $src = $base_url . '?url=' . $url . '&id_product=' . $productId . '&id_customer=' . $customerId .  '&id_category=' . $idCategory . '&id_manufacturer=' . $idManufacturer . '&spm_ident=' . $spmIdent;
+        $src = $base_url . '?url=' . $url . '&id_product=' . $productId . '&id_customer=' . $customerId .  '&id_category=' . $idCategory . '&id_manufacturer=' . $idManufacturer . '&spm_ident=' . $spmIdent . '&language=' . $language;
+        if ($idCart) {
+            $src .= '&id_cart=' . $idCart;
+            $src .= '&cart_hash=' . sha1(serialize($cartData));
+        }
         $event->add(
             <<<HTML
             <script>

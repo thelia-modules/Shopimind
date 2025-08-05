@@ -116,6 +116,11 @@ class RequestHandler
             case 'vouchers':
                 $response = SyncVouchers::processSyncVouchers( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs );
                 break;
+            default:
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Invalid type parameter',
+                ]);
         }
 
         return new JsonResponse($response);

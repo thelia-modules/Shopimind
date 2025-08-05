@@ -11,6 +11,7 @@ use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmOrdersStatus;
 use Shopimind\Data\OrderStatusData;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncOrderStatus
 {
@@ -194,6 +195,8 @@ class SyncOrderStatus
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'orders_statuses', $objectStatus );  
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'orders_statuses', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

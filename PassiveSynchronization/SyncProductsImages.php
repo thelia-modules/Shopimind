@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsImages extends AbstractController
 {
@@ -196,6 +197,12 @@ class SyncProductsImages extends AbstractController
                                 "last_object_update" => $lastObjectUpdate,
                             ];
                             ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );  
+                            
+                            $errorData = $value;
+                            foreach ($errorData as &$item) {
+                                $item['product_id'] = $productId;
+                            }
+                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_images', $response, $errorData );
                         }
 
                         Utils::handleResponse( $response );

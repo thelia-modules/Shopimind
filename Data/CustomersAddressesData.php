@@ -14,7 +14,7 @@ class CustomersAddressesData
      */
     public static function formatCustomerAddress( Address $address ){
         $country = CountryQuery::create()->findOneById( $address->getCountryId() );
-
+        $countryCode = !empty( $country ) ? $country->getIsoalpha2() : '';
         $data = [
             "address_id" => intval( $address->getId() ),
             "first_name" => $address->getFirstname() ?? '',
@@ -26,7 +26,7 @@ class CustomersAddressesData
             "address_line_2" => $address->getAddress2() ?? '',
             "postal_code" => $address->getZipcode() ?? '',
             "city" => $address->getCity() ?? '',
-            "country" => !empty( $country ) ? $country->getTitle() : '',
+            "country" => $countryCode,
             "is_active" => true,
             "created_at" => $address->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
             'updated_at' => $address->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),

@@ -34,4 +34,9 @@ return [
     'Enabling logs allows for the recording of system or application events, providing a record that can be used for troubleshooting.' => 'Activer les journaux permet d\'enregistrer les événements du système ou de l\'application, fournissant un enregistrement pouvant être utilisé à des fins de dépannage',
     'Does the synchronization of your data have to be done in real time ?' => 'La synchronisation de vos données doit-elle se faire en temps réel ?',
     'Use real-time synchronization' => 'Utiliser la synchronisation en temps réel',
+    'Module connected to Shopimind.' => 'Module connecté à Shopimind.',
+    'You must select at least one status.' => 'Vous devez sélectionner au moins un statut.',
+    'Module not connected to Shopimind.' => 'Module non connecté à Shopimind.',
+    'Confirmed order statuses' => 'Statuts de commande confirmés',
+    'Select order statuses to be considered as confirmed' => 'Sélectionnez les statuts de commande qui doivent être considérés comme confirmés',
 ];

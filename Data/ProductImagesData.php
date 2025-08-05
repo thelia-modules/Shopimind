@@ -84,7 +84,7 @@ class ProductImagesData
 
             try {
                 $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
-                $cacheSubdirectory = '/product/';
+                $cacheSubdirectory = '/product_image/';
                 $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
                 $pattern = $cacheDirectory . '*-' . strtolower($productImage->getFile());
                 $cachedFiles = glob($pattern);
@@ -107,12 +107,12 @@ class ProductImagesData
                         "%s%s/%s/%s",
                         THELIA_ROOT,
                         ConfigQuery::read('image_cache_dir_from_web_root'),
-                        "product",
+                        "product_image",
                         $fileName
                     );
                 
                     $productImageEvent = new ImageEvent();
-                    $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
+                    $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product_image');
                     
                     $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
                     $url = $productImageEvent->getFileUrl();

@@ -10,6 +10,7 @@ use Shopimind\Data\CustomersData;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmCustomers;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncCustomers
 {
@@ -182,6 +183,8 @@ class SyncCustomers
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers', $objectStatus );        
+                        
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'customers', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

@@ -187,13 +187,14 @@ class SpmVouchers
         $coupon->setIsEnabled( 1 );
         $coupon->setStartDate( $startDate );
         $coupon->setExpirationDate( $expirationDate );
-        $coupon->setMaxUsage( 1 );
         $coupon->setIsCumulative( $isCumulative );
         $coupon->setIsRemovingPostage( $isRemovingPostage ); 
         $coupon->setIsAvailableOnSpecialOffers( 0 );
         $coupon->setIsUsed( 0 );
         $coupon->setSerializedConditions( base64_encode( json_encode( $condition ) ) );
-        $coupon->setPerCustomerUsageCount( 1 );
+        // voucher can be used once
+        $coupon->setMaxUsage( 1 );
+        $coupon->setPerCustomerUsageCount( 0 );
         $coupon->setCreatedAt( new \DateTime() );
         $coupon->setUpdatedAt( new \DateTime() );
         $coupon->setVersion( 0 );

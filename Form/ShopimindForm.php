@@ -10,6 +10,9 @@ use Symfony\Component\Validator\Constraints;
 use Thelia\Form\BaseForm;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Shopimind\lib\Utils;
+use Thelia\Model\Base\OrderStatusQuery;
+use Thelia\Model\OrderStatusI18nQuery;
+use Thelia\Core\Translation\Translator;
 
 
 /**
@@ -32,17 +35,39 @@ class ShopimindForm extends BaseForm
         $scriptTag = !empty($config) ? $config->getScriptTag() : 1;
         $log = !empty($config) ? $config->getLog() : "";
 
+        $paidStatus = OrderStatusQuery::create()->findOneByCode('paid');
+        $paidStatusId = ( !empty( $paidStatus ) ) ? $paidStatus->getId() : null;
+        $confirmedStatuses = !empty($config) && !empty($config->getConfirmedStatuses())
+            ? json_decode($config->getConfirmedStatuses(), true)
+            : (!empty($paidStatusId) ? [$paidStatusId] : []);
+
         $session = new Session();
         $flashbag = $session->getFlashBag();
         $successMsg = "";
-        $errorMsg = "";
         foreach ( $flashbag->get('success') as $message ) {
             $successMsg = $message;
+        }
+        $errorMsg = "";
+        foreach ( $flashbag->get('error') as $message ) {
+            $errorMsg = $message;
         }
 
         $isNotConnected = "";
         if ( !Utils::isConnected() ) {
             $isNotConnected = "Your module is not connected.";
+        }
+        
+        $orderStatuses = OrderStatusQuery::create()->find();
+        $statusChoices = [];
+        $lang = $this->getRequest()->getSession()->getLang();
+        foreach ($orderStatuses as $status) {
+            $statusI18n = OrderStatusI18nQuery::create()
+                ->filterByLocale($lang->getLocale())
+                ->filterById($status->getId())
+                ->findOne();
+            
+            $title = $statusI18n ? $statusI18n->getTitle() : $status->getCode();
+            $statusChoices[$title] = $status->getId();
         }
 
         $this->formBuilder
@@ -124,6 +149,14 @@ class ShopimindForm extends BaseForm
             'required' => false,
             'label' => 'Log',
             'data' => (bool) $log,
+        ])
+        ->add('confirmed-statuses', ChoiceType::class, [
+            'required' => false,
+            'label' => 'Statuts de commande confirmés',
+            'choices' => $statusChoices,
+            'multiple' => true,
+            'expanded' => true,
+            'data' => $confirmedStatuses,
         ])
         ->add('submit', SubmitType::class, [
             'label' => 'valider',

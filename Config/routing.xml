@@ -95,5 +95,13 @@
     <route id="shopimind.sync.object-status.fail.post" path="/shopimind/sync-object-status/fail" methods="post">
         <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::setObjectSyncStatusToFailed</default>
     </route>
-    
+
+    <route id="shopimind.sync.reset-running-status.post" path="/shopimind/sync-reset-running-status" methods="post">
+        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::resetRunningStatus</default>
+    </route>    
+
+    <!-- sync-errors -->
+    <route id="shopimind.sync.errors.csv" path="/shopimind/sync-errors/csv" methods="get">
+        <default key="_controller">Shopimind\SyncErrors\SyncErrors::downloadMultipleSyncErrorsCsv</default>
+    </route>
 </routes>

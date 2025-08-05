@@ -11,6 +11,7 @@ use Shopimind\lib\Utils;
 use Shopimind\Data\ProductsCategoriesData;
 use Shopimind\SdkShopimind\SpmProductsCategories;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsCategories
 {
@@ -194,6 +195,8 @@ class SyncProductsCategories
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_categories', $objectStatus );  
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_categories', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

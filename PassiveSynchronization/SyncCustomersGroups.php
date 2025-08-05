@@ -11,6 +11,7 @@ use Shopimind\lib\Utils;
 use CustomerFamily\Model\CustomerFamilyQuery;
 use Thelia\Model\Base\LangQuery;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncCustomersGroups
 {
@@ -193,6 +194,8 @@ class SyncCustomersGroups
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_groups', $objectStatus );    
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'customers_groups', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

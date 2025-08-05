@@ -10,6 +10,7 @@ use Shopimind\lib\Utils;
 use Shopimind\Data\ProductsManufacturersData;
 use Shopimind\SdkShopimind\SpmProductsManufacturers;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsManufacturers
 {
@@ -180,6 +181,8 @@ class SyncProductsManufacturers
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_manufacturers', $objectStatus );  
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_manufacturers', $response, $data );
                     }
 
                     Utils::handleResponse( $response );

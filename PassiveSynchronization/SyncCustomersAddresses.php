@@ -10,6 +10,7 @@ use Shopimind\SdkShopimind\SpmCustomersAddresses;
 use Shopimind\Data\CustomersAddressesData;
 use Shopimind\lib\Utils;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncCustomersAddresses
 {
@@ -186,6 +187,12 @@ class SyncCustomersAddresses
                                 "last_object_update" => $lastObjectUpdate,
                             ];
                             ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );  
+
+                            $errorData = $value;
+                            foreach ($errorData as &$item) {
+                                $item['customer_id'] = $customerId;
+                            }
+                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'customers_addresses', $response, $errorData );
                         }
 
                         Utils::handleResponse( $response );

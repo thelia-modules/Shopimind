@@ -10,6 +10,7 @@ use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmNewsletterSubscribers;
 use Shopimind\Data\NewsletterSubscribersData;
 use Shopimind\Model\ShopimindSyncStatus;
+use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncNewsletterSubscribers
 {
@@ -180,6 +181,8 @@ class SyncNewsletterSubscribers
                             "last_object_update" => $lastObjectUpdate,
                         ];
                         ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'newsletter_subscribers', $objectStatus );  
+
+                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'newsletter_subscribers', $response, $data );
                     }
                     
                     Utils::handleResponse( $response );

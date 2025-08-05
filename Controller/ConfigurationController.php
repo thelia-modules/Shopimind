@@ -16,6 +16,7 @@ use Thelia\Model\Base\ConfigQuery;
 use Thelia\Model\Base\CurrencyQuery;
 use Thelia\Model\Base\LangQuery;
 use Shopimind\SdkShopimind\SpmUtils;
+use Thelia\Core\Translation\Translator;
 
 class ConfigurationController extends BaseAdminController
 {
@@ -37,15 +38,19 @@ class ConfigurationController extends BaseAdminController
         $outOfStockProductDisabling = array_key_exists('out-of-stock-product-disabling', $data) ? 1 : 0;
         $scriptTag = array_key_exists('script-tag', $data) ? 1 : 0;
         $activeLog = array_key_exists('log', $data) ? 1 : 0;
-
+        $confirmedStatuses = array_key_exists('confirmed-statuses', $data) ? $data['confirmed-statuses'] : null;
         $headers = [ 'client-id' => $apiId ];
+
+        $session = new Session();
+        if ( empty( $confirmedStatuses ) ) {
+            $session->getFlashBag()->add('error', Translator::getInstance()->trans('You must select at least one status.', [], 'shopimind'));
+            return $response;
+        }
 
         $auth = SpmUtils::getClient( 'v1', $apiPassword, $headers );
 
         $connection = self::connectModule( $auth );
-
-
-        $session = new Session();
+        
         $config = new Shopimind();
         $config->setRealTimeSynchronization($realTimeSynchronization);
         $config->setNominativeReductions($nominativeReductions);
@@ -53,17 +58,18 @@ class ConfigurationController extends BaseAdminController
         $config->setOutOfStockProductDisabling($outOfStockProductDisabling);
         $config->setScriptTag($scriptTag);
         $config->setLog($activeLog);
+        $config->setConfirmedStatuses(json_encode($confirmedStatuses));
 
         if ( isset( $connection['statusCode'] ) && ( $connection['statusCode'] == 200 ) ) {
             $config->setApiId($apiId);
             $config->setApiPassword($apiPassword);
             $config->setIsConnected(true);
-            $session->getFlashBag()->add('success', 'Module connected to Shopimind.');
+            $session->getFlashBag()->add('success', Translator::getInstance()->trans('Module connected to Shopimind.', [], 'shopimind'));
         }else {
             $config->setApiId('');
             $config->setApiPassword('');
             $config->setIsConnected(false);
-            $session->getFlashBag()->add('error', 'Module not connected to Shopimind.');
+            $session->getFlashBag()->add('error', Translator::getInstance()->trans('Module not connected to Shopimind.', [], 'shopimind'));
         }
 
         ShopimindQuery::clearTable();
@@ -115,7 +121,7 @@ class ConfigurationController extends BaseAdminController
             'timezone' => $timezone,
             'url_client' => $urlClient,
             'ecommerce_version' => reset( $ecommerce_version ),
-            'module_version' => '1.0.2'
+            'module_version' => '1.0.4'
         ];
         
         $response = SpmShopConnection::saveConfiguration( $auth, $config );

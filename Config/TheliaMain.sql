@@ -21,6 +21,7 @@ CREATE TABLE `shopimind`
     `script_tag` TINYINT(1),
     `is_connected` TINYINT(1),
     `log` TINYINT(1),
+    `confirmed_statuses` LONGTEXT,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 
@@ -37,6 +38,24 @@ CREATE TABLE `shopimind_sync_status`
     `global_state` VARCHAR(50),
     `first_call` TIMESTAMP,
     `statuses` JSON,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- shopimind_sync_errors
+-- ---------------------------------------------------------------------
+
+DROP TABLE IF EXISTS `shopimind_sync_errors`;
+
+CREATE TABLE `shopimind_sync_errors`
+(
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `id_shop_ask_syncs` BIGINT,
+    `object_type` VARCHAR(50),
+    `error_code` INTEGER,
+    `error_message` JSON,
+    `data` JSON,
+    `timestamp` TIMESTAMP,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 

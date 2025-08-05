@@ -119,6 +119,20 @@
             </div>
         </div>
 
+        <div class="form-group" style="align-items: baseline;">
+            <label class="form-label"><span>* </span> {intl d='shopimind' l='Confirmed order statuses'}</label>
+            <div class="multi-select-container">
+                {form_field form=$form field="confirmed-statuses"}
+                    <select multiple name="{$name}[]" id="confirmed-statuses" multiple="multiple" class="form-control select2">
+                        {foreach $choices as $choice}
+                            <option value="{$choice->value}" {if $choice->value|in_array:$data}selected{/if}>{$choice->label}</option>
+                        {/foreach}
+                    </select>
+                {/form_field}
+                <div class="help" style="margin-top: 11px;">{intl d='shopimind' l='Select order statuses to be considered as confirmed'}</div>
+            </div>
+        </div>
+
         <div class="submit-container">
             <input type="submit" class="form-submit-button btn btn-sm btn-success" value="{intl d='shopimind' l='Validate'}">
         </div>
@@ -262,7 +276,63 @@
         height: 600px;
         overflow: auto;
     }
+
+    .select2-container {
+        width: 50% !important;
+    }
+    
+    .select2-selection--multiple {
+        min-height: 34px;
+    }
+
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+    
+    .checkbox-group label {
+        display: block;
+        margin-right: 15px;
+        margin-bottom: 10px;
+        font-weight: normal;
+        width: auto;
+        text-align: left;
+        padding: 0;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+        margin-right: 5px;
+    }
+
+    .multi-select-container{
+        width: 50%;
+    }
+
+    .select2-container--default .select2-selection--multiple{
+        border-color: #e6e6e6 !important;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected]{
+        background-color: #e6e6e6 !important;
+        color: black !important;
+    }
+
+    .select2-container--default .select2-results__option[aria-selected=true]{
+        background-color: #39a52545 !important;
+    }
+    
+    .select2-container--default .select2-selection--multiple .select2-selection__choice{
+        color: #000000bd !important;
+        background-color: #39a52545 !important;
+        border: none !important;
+        padding: 7px 16px !important;
+    }
 </style>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
 <script>
     function openTab(evt, tabName) {
@@ -281,4 +351,16 @@
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
     }
+
+    jQuery(document).ready(function($) {
+        if ($.fn.select2) {
+            $('#confirmed-statuses').select2({
+                placeholder: "{intl d='shopimind' l='Select order statuses to be considered as confirmed'}",
+                placeholder: "Select order statuses to be considered as confirmed",
+                allowClear: true,
+                multiple: true,
+                closeOnSelect: false
+            });
+        }
+    });
 </script>
