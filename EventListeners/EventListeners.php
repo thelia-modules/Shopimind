@@ -47,7 +47,7 @@ class EventListeners implements EventSubscriberInterface
         $this->dispatcher = $dispatcher;
     }
 
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         $parameters = Utils::getParameters();
         $defaultPriority = 128;
