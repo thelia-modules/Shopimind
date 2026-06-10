@@ -5,7 +5,7 @@ namespace Shopimind;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ServicesConfigurator;
 use Symfony\Component\Finder\Finder;
-use Thelia\Install\Database;
+use Thelia\Core\Install\Database;
 use Thelia\Module\BaseModule;
 
 class Shopimind extends BaseModule
@@ -45,8 +45,10 @@ class Shopimind extends BaseModule
     {
         $servicesConfigurator->load(self::getModuleCode().'\\', __DIR__)
             ->exclude([
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()). "/I18n/*",
-                THELIA_MODULE_DIR . ucfirst(self::getModuleCode()) . "/PassiveSynchronization/Scripts/*"    
+                __DIR__ . '/I18n/*',
+                __DIR__ . '/PassiveSynchronization/Scripts/*',
+                __DIR__ . '/vendor-module/*',
+                __DIR__ . '/Shopimind.php',
             ])
             ->autowire(true)
             ->autoconfigure(true);

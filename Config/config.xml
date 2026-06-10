@@ -10,33 +10,12 @@
         -->
     </loops>
 
-    <forms>
-        <!--
-        <form name="MyFormName" class="Shopimind\Form\MySuperForm" />
-        -->
-    </forms>
-
     <commands>
         <!--
         <command class="Shopimind\Command\MySuperCommand" />
         -->
     </commands>
 
-    <!--
-    <services>
-
-    </services>
-    -->
-
-    <hooks>
-        <hook id="shopimind.hook.config">
-            <tag name="hook.event_listener" event="module.configuration" type="back" templates="render:module_configuration.html" />
-        </hook>
-        <hook id="shopimind.hook.tagFooter" class="Shopimind\Hook\ShopimindHook">
-            <tag name="hook.event_listener" event="main.content-bottom" method="addScriptTagFooter" type="front"/>
-        </hook>
-    </hooks>
-   
     <!--
     <exports>
 
@@ -48,5 +27,5 @@
 
     </imports>
     -->
-    
+
 </config>

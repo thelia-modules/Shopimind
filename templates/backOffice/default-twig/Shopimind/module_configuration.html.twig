@@ -1,0 +1,193 @@
+{# Shopimind module configuration fragment - no extends, hook fragment #}
+<div class="card mb-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="shopimind-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="shopimind-config-tab" data-bs-toggle="tab"
+                        data-bs-target="#shopimind-config" type="button" role="tab"
+                        aria-controls="shopimind-config" aria-selected="true">
+                    {{ 'Configuration'|trans({}, 'shopimind') }}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="shopimind-log-tab" data-bs-toggle="tab"
+                        data-bs-target="#shopimind-log" type="button" role="tab"
+                        aria-controls="shopimind-log" aria-selected="false">
+                    {{ 'Log'|trans({}, 'shopimind') }}
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content" id="shopimind-tab-content">
+
+            {# --- Configuration tab --- #}
+            <div class="tab-pane fade show active" id="shopimind-config" role="tabpanel" aria-labelledby="shopimind-config-tab">
+
+                <h4 class="mb-3">{{ 'Configuration of ShopiMind module'|trans({}, 'shopimind') }}</h4>
+
+                {% if not isConnected %}
+                <div class="alert alert-danger">
+                    {{ 'Your module is not connected.'|trans({}, 'shopimind') }}
+                </div>
+                {% endif %}
+
+                {% if successMsg %}
+                <div class="alert alert-success">
+                    {{ successMsg|trans({}, 'shopimind') }}
+                </div>
+                {% endif %}
+
+                {% if errorMsg %}
+                <div class="alert alert-danger">
+                    {{ errorMsg }}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{{ path('shopimind.configuration') }}">
+                    <input type="hidden" name="{{ form.vars.full_name }}[_token]" value="{{ form._token.vars.value }}">
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label text-end">
+                            <span class="text-danger">* </span>{{ 'API Id'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <input type="text"
+                                   name="{{ form.vars.full_name }}[api-id]"
+                                   value="{{ form['api-id'].vars.value }}"
+                                   class="form-control{{ form['api-id'].vars.errors|length ? ' is-invalid' : '' }}">
+                            {% do form['api-id'].setRendered %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label text-end">
+                            <span class="text-danger">* </span>{{ 'API password'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <input type="password"
+                                   name="{{ form.vars.full_name }}[api-password]"
+                                   value="{{ form['api-password'].vars.value }}"
+                                   class="form-control{{ form['api-password'].vars.errors|length ? ' is-invalid' : '' }}">
+                            {% do form['api-password'].setRendered %}
+                        </div>
+                    </div>
+
+                    {# Toggle helper macro — inline for clarity #}
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Use real-time synchronization'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[real-time-synchronization]"
+                                       value="1"
+                                       {{ form['real-time-synchronization'].vars.checked ? 'checked' : '' }}>
+                                {% do form['real-time-synchronization'].setRendered %}
+                            </div>
+                            <div class="form-text">{{ 'Does the synchronization of your data have to be done in real time ?'|trans({}, 'shopimind') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Generate nominative vouchers?'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[nominative-reductions]"
+                                       value="1"
+                                       {{ form['nominative-reductions'].vars.checked ? 'checked' : '' }}>
+                                {% do form['nominative-reductions'].setRendered %}
+                            </div>
+                            <div class="form-text">{{ 'Must ShopiMind vouchers be associated with your customers\' accounts (this means that your customer must be logged in to use it) ?'|trans({}, 'shopimind') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Vouchers can be combined with other codes ?'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[cumulative-vouchers]"
+                                       value="1"
+                                       {{ form['cumulative-vouchers'].vars.checked ? 'checked' : '' }}>
+                                {% do form['cumulative-vouchers'].setRendered %}
+                            </div>
+                            <div class="form-text">{{ 'Should vouchers generated by ShopiMind be combined with other promotional codes ?'|trans({}, 'shopimind') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Deactivate out-of-stock products ?'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[out-of-stock-product-disabling]"
+                                       value="1"
+                                       {{ form['out-of-stock-product-disabling'].vars.checked ? 'checked' : '' }}>
+                                {% do form['out-of-stock-product-disabling'].setRendered %}
+                            </div>
+                            <div class="form-text">{{ 'Would you like to define out-of-stock products as desactivated ?'|trans({}, 'shopimind') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Activate the tag script of Shopimind ?'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[script-tag]"
+                                       value="1"
+                                       {{ form['script-tag'].vars.checked ? 'checked' : '' }}>
+                                {% do form['script-tag'].setRendered %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row align-items-center">
+                        <label class="col-sm-4 col-form-label text-end">
+                            {{ 'Activate logs ?'|trans({}, 'shopimind') }}
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       name="{{ form.vars.full_name }}[log]"
+                                       value="1"
+                                       {{ form['log'].vars.checked ? 'checked' : '' }}>
+                                {% do form['log'].setRendered %}
+                            </div>
+                            <div class="form-text">{{ 'Enabling logs allows for the recording of system or application events, providing a record that can be used for troubleshooting.'|trans({}, 'shopimind') }}</div>
+                        </div>
+                    </div>
+
+                    {# Emit remaining hidden fields (logView, isNotConnected, successMsg, errorMsg, submit, _token) #}
+                    {{ form_rest(form) }}
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-save me-1" aria-hidden="true"></i>
+                            {{ 'Validate'|trans({}, 'shopimind') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {# --- Log tab --- #}
+            <div class="tab-pane fade" id="shopimind-log" role="tabpanel" aria-labelledby="shopimind-log-tab">
+                <div class="bg-white border rounded p-3" style="height:600px;overflow:auto;">
+                    {{ logView|raw }}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
