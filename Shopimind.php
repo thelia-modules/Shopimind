@@ -14,10 +14,7 @@ class Shopimind extends BaseModule
     const DOMAIN_NAME = 'shopimind';
 
 
-    /**
-     * @return bool true to continue module activation, false to prevent it
-     */
-    public function preActivation(ConnectionInterface $con = null)
+    public function preActivation(?ConnectionInterface $con = null): bool
     {
         if ( !self::getConfigValue('is_initialized', false) ) {
             $database = new Database($con);
@@ -29,7 +26,7 @@ class Shopimind extends BaseModule
         return true;
     }
 
-    public function destroy(ConnectionInterface $con = null, $deleteModuleData = false): void
+    public function destroy(?ConnectionInterface $con = null, $deleteModuleData = false): void
     {
         $database = new Database($con);
 
@@ -66,7 +63,7 @@ class Shopimind extends BaseModule
      * @param $newVersion
      * @param ConnectionInterface $con
      */
-    public function update($currentVersion, $newVersion, ConnectionInterface $con = null): void
+    public function update($currentVersion, $newVersion, ?ConnectionInterface $con = null): void
     {
         $updateDir = __DIR__.DS.'Config'.DS.'update';
 
