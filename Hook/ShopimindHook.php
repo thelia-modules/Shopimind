@@ -217,6 +217,6 @@ class ShopimindHook extends BaseHook
 
         fclose($f);
 
-        return nl2br(htmlspecialchars($output));
+        return $output;
     }
 }

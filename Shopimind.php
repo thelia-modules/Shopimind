@@ -49,6 +49,11 @@ class Shopimind extends BaseModule
                 __DIR__ . '/PassiveSynchronization/Scripts/*',
                 __DIR__ . '/vendor-module/*',
                 __DIR__ . '/Shopimind.php',
+                // CustomerFamily is an optional module; these files carry CustomerFamily type hints
+                // in method signatures which would cause DI compile failure when absent.
+                // They are all called statically and do not need DI wiring.
+                __DIR__ . '/EventListeners/CustomersGroupsListener.php',
+                __DIR__ . '/Data/CustomersGroupsData.php',
             ])
             ->autowire(true)
             ->autoconfigure(true);

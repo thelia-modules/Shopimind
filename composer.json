@@ -13,6 +13,9 @@
     "thelia/installer": "~1.1",
     "shopimind/sdk-shopimind": "1.0.3"
   },
+  "suggest": {
+    "thelia-modules/customer-family": "Enables customer groups synchronization with Shopimind"
+  },
   "extra": {
     "installer-name": "Shopimind"
   },

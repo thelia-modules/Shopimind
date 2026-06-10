@@ -23,7 +23,6 @@ use Thelia\Core\Event\ProductSaleElement\ProductSaleElementUpdateEvent;
 use Thelia\Core\Event\ProductSaleElement\ProductSaleElementCreateEvent;
 use Thelia\Model\Event\CouponEvent;
 use CustomerFamily\Event\CustomerFamilyEvents;
-use CustomerFamily\Event\CustomerFamilyEvent;
 
 use Shopimind\EventListeners\CustomersListener;
 use Shopimind\EventListeners\CustomersGroupsListener;
@@ -143,23 +142,23 @@ class EventListeners implements EventSubscriberInterface
 
     /**
      * Event listener for customer-family-related actions.
-     * 
+     * CustomerFamilyEvent is typed as object to avoid DI compile failure when CustomerFamily is absent.
      */
-    public function postCustomerGroupInsert(CustomerFamilyEvent $event)
+    public function postCustomerGroupInsert(object $event): void
     {
         if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
             CustomersGroupsListener::postCustomerGroupInsert( $event );
         }
     }
 
-    public function postCustomerGroupUpdate(CustomerFamilyEvent $event)
+    public function postCustomerGroupUpdate(object $event): void
     {
         if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
             CustomersGroupsListener::postCustomerGroupUpdate( $event );
         }
     }
 
-    public function postCustomerGroupDelete(CustomerFamilyEvent $event)
+    public function postCustomerGroupDelete(object $event): void
     {
         if ( Utils::useRealTimeSynchronization() && Utils::isCustomerFamilyActive() ){
             CustomersGroupsListener::postCustomerGroupDelete( $event );
