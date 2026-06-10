@@ -1,7 +1,7 @@
 <?php
 namespace Shopimind\lib;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once __DIR__ . '/../vendor-module/autoload.php';
 
 use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\SdkShopimind\SpmUtils;

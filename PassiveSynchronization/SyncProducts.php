@@ -2,7 +2,7 @@
 
 namespace Shopimind\PassiveSynchronization;
 
-require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
+require_once __DIR__ . '/../vendor-module/autoload.php';
 
 use Thelia\Model\ProductQuery;
 use Thelia\Model\Base\LangQuery;
