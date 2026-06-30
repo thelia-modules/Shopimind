@@ -11,7 +11,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Thelia\Tools\TokenProvider;
 use Thelia\Tools\URL;
-use Symfony\Component\HttpFoundation\Session\Session;
 use Shopimind\SdkShopimind\SpmShopConnection;
 use Thelia\Model\Base\ConfigQuery;
 use Thelia\Model\Base\CurrencyQuery;
@@ -47,8 +46,6 @@ class ConfigurationController extends BaseAdminController
 
         $connection = self::connectModule( $auth, $request->getSchemeAndHttpHost() );
 
-
-        $session = new Session();
         $config = new Shopimind();
         $config->setRealTimeSynchronization($realTimeSynchronization);
         $config->setNominativeReductions($nominativeReductions);
@@ -61,12 +58,16 @@ class ConfigurationController extends BaseAdminController
             $config->setApiId($apiId);
             $config->setApiPassword($apiPassword);
             $config->setIsConnected(true);
-            $session->getFlashBag()->add('success', 'Module connected to Shopimind.');
+            if ($request->hasSession()) {
+                $request->getSession()->getFlashBag()->add('success', 'Module connected to Shopimind.');
+            }
         }else {
             $config->setApiId('');
             $config->setApiPassword('');
             $config->setIsConnected(false);
-            $session->getFlashBag()->add('error', 'Module not connected to Shopimind.');
+            if ($request->hasSession()) {
+                $request->getSession()->getFlashBag()->add('error', 'Module not connected to Shopimind.');
+            }
         }
 
         ShopimindQuery::clearTable();
