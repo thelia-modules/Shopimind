@@ -9,6 +9,7 @@ use Shopimind\Model\ShopimindQuery;
 use Thelia\Controller\Admin\BaseAdminController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Thelia\Tools\TokenProvider;
 use Thelia\Tools\URL;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Shopimind\SdkShopimind\SpmShopConnection;
@@ -24,8 +25,10 @@ class ConfigurationController extends BaseAdminController
      *
      * @param Request $request The request object.
      */
-    public function saveConfiguration( Request $request )
+    public function saveConfiguration( Request $request, TokenProvider $tokenProvider )
     {
+        $tokenProvider->checkToken((string) $request->query->get('_token'));
+
         $response = $this->redirectToConfigurationPage();
 
         $data = $request->request->all( 'shopimind_form_shopimind_form' );

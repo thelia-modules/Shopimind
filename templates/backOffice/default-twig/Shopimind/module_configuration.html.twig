@@ -44,7 +44,7 @@
                 </div>
                 {% endif %}
 
-                <form method="post" action="{{ path('shopimind.configuration') }}">
+                <form method="post" action="{{ path('shopimind.configuration') }}?_token={{ assignToken() }}">
                     <input type="hidden" name="{{ form.vars.full_name }}[_token]" value="{{ form._token.vars.value }}">
 
                     <div class="mb-3 row">
