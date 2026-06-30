@@ -9,7 +9,10 @@ use Shopimind\Model\ShopimindQuery;
 use Thelia\Controller\Admin\BaseAdminController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Thelia\Tools\TokenProvider;
+use Thelia\Core\Security\AccessManager;
+use Thelia\Core\Security\Resource\AdminResources;
 use Thelia\Tools\URL;
 use Shopimind\SdkShopimind\SpmShopConnection;
 use Thelia\Model\Base\ConfigQuery;
@@ -26,6 +29,10 @@ class ConfigurationController extends BaseAdminController
      */
     public function saveConfiguration( Request $request, TokenProvider $tokenProvider )
     {
+        if (($response = $this->checkAuth(AdminResources::MODULE, 'Shopimind', AccessManager::UPDATE)) instanceof Response) {
+            return $response;
+        }
+
         $tokenProvider->checkToken((string) $request->query->get('_token'));
 
         $response = $this->redirectToConfigurationPage();
