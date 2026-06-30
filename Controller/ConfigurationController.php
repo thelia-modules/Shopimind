@@ -45,7 +45,7 @@ class ConfigurationController extends BaseAdminController
 
         $auth = SpmUtils::getClient( 'v1', $apiPassword, $headers );
 
-        $connection = self::connectModule( $auth );
+        $connection = self::connectModule( $auth, $request->getSchemeAndHttpHost() );
 
 
         $session = new Session();
@@ -90,7 +90,7 @@ class ConfigurationController extends BaseAdminController
      *
      * @param  $auth
      */
-    public static function connectModule( $auth )
+    public static function connectModule( $auth, string $schemeAndHost = '' )
     {
         $currencyQuery = CurrencyQuery::create()->findOneByByDefault( 1 );
         if ( empty( $currencyQuery ) ) return '';
@@ -106,7 +106,7 @@ class ConfigurationController extends BaseAdminController
 
         $timezone = date_default_timezone_get();
 
-        $urlClient = $_SERVER['REQUEST_SCHEME']. '://' .$_SERVER['HTTP_HOST'] . '/shopimind';
+        $urlClient = $schemeAndHost . '/shopimind';
 
         $configQuery = ConfigQuery::create()->findByName( 'thelia_version' );
         $ecommerce_version = $configQuery->getColumnValues( 'value' );
