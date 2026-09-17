@@ -8,11 +8,28 @@ use Thelia\Core\Event\TheliaEvents;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Thelia\Model\Base\Lang;
 use Thelia\Model\ConfigQuery;
+use Shopimind\lib\Utils;
 
 class ProductImagesData
 {
+    /** Image envoyée quand aucune URL n'est trouvée, comme pour les produits et les déclinaisons. */
+    const PLACEHOLDER_IMAGE_URL = 'https://placehold.co/300x300';
+
     /**
-     * Formats the product image data to match the Shopimind format.
+     * URL de l'image, ou l'image de remplacement si elle est absente : ShopiMind refuse une url vide.
+     *
+     * @param mixed $url
+     * @return string
+     */
+    public static function urlOrPlaceholder( $url ): string
+    {
+        $url = is_string( $url ) ? trim( $url ) : '';
+
+        return $url !== '' ? $url : self::PLACEHOLDER_IMAGE_URL;
+    }
+
+    /**
+     * Formats the product image data to match the ShopiMind format.
      *
      * @param ProductImage $productImage
      * @param $imageTranslated
@@ -36,7 +53,7 @@ class ProductImagesData
                 'image_id' => strval( $productImage->getId() ),
                 'variation_id' => null,
                 'lang' => $lang->getCode(),
-                'url' => $rootUrl,
+                'url' => self::urlOrPlaceholder( $rootUrl ),
                 'is_default' => false,
             ];
         } else if ( $action == 'update') {
@@ -48,13 +65,14 @@ class ProductImagesData
                 'image_id' => strval( $productImage->getId() ),
                 'variation_id' => $productSaleElementsProductImages ? intval( $productSaleElementsProductImages->getProductSaleElementsId() ) : null,
                 'lang' => $lang->getCode(),
-                'url' => $url,
+                'url' => self::urlOrPlaceholder( $url ),
                 'is_default' => ( $productImage->getPosition() == 1 ) ? true : false,
-                'created_at' => $productImage->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-                'updated_at' => $productImage->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+                'created_at' => $productImage->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+                'updated_at' => $productImage->getUpdatedAt()->format('Y-m-d\TH:i:s.uP')
             ];
         }
         
+        $data['source_label'] = Utils::getSourceLabel();
         return $data;
     }
 

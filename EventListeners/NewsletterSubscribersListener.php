@@ -8,6 +8,9 @@ use Shopimind\Model\Base\ShopimindQuery;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmNewsletterSubscribers;
 use Shopimind\Data\NewsletterSubscribersData;
+use Shopimind\Data\CustomersData;
+use Shopimind\SdkShopimind\SpmCustomers;
+use Thelia\Model\CustomerQuery;
 
 
 class NewsletterSubscribersListener
@@ -26,12 +29,7 @@ class NewsletterSubscribersListener
         Utils::handleResponse( $response );
         Utils::log( 'NewsletterSubscribers', 'Insert', json_encode( $response ), $newsletter->getId() );
 
-        $customer = NewsletterSubscribersData::customerData( $newsletter->getEmail() );
-        if ( !empty( $customer ) ) {
-            $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
-            Utils::handleResponse( $response );
-            Utils::log( 'Customer', 'Update', json_encode( $response ), $newsletter->getId() );
-        }
+        self::syncCustomer( $newsletter->getEmail() );
     }
 
     /**
@@ -44,15 +42,30 @@ class NewsletterSubscribersListener
         $newsletter = $event->getModel();
 
         $data[] = NewsletterSubscribersData::formatNewsletterSubscriber( $newsletter );
-        $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmNewsletterSubscribers::bulkSave( Utils::getAuth(), $data );
         Utils::handleResponse( $response );
         Utils::log( 'NewsletterSubscribers', 'Update', json_encode( $response ), $newsletter->getId() );
 
-        $customer = NewsletterSubscribersData::customerData( $newsletter->getEmail() );
-        if ( !empty( $customer ) ) {
-            $response = SpmNewsletterSubscribers::bulkUpdate( Utils::getAuth(), $data );
-            Utils::handleResponse( $response );
-            Utils::log( 'Customer', 'Update', json_encode( $response ), $newsletter->getId() );
+        self::syncCustomer( $newsletter->getEmail() );
+    }
+
+    /**
+     * Renvoie la fiche du client lié à l'e-mail : son is_newsletter_subscribed est lu dans la table
+     * newsletter, qu'un abonnement modifie sans déclencher d'événement client. Le second appel
+     * renvoyait l'abonné une deuxième fois au lieu du client.
+     *
+     * @param string $email
+     */
+    protected static function syncCustomer( string $email ): void
+    {
+        $customer = CustomerQuery::create()->findOneByEmail( $email );
+        if ( empty( $customer ) ) {
+            return;
         }
+
+        $data = [ CustomersData::formatCustomer( $customer ) ];
+        $response = SpmCustomers::bulkSave( Utils::getAuth(), $data );
+        Utils::handleResponse( $response );
+        Utils::log( 'Customer', 'Update', json_encode( $response ), $customer->getId() );
     }
 }

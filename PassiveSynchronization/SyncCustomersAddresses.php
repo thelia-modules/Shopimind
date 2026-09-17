@@ -5,215 +5,146 @@ namespace Shopimind\PassiveSynchronization;
 require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 
 use Thelia\Model\AddressQuery;
-use Symfony\Component\HttpFoundation\Request;
 use Shopimind\SdkShopimind\SpmCustomersAddresses;
 use Shopimind\Data\CustomersAddressesData;
 use Shopimind\lib\Utils;
-use Shopimind\Model\ShopimindSyncStatus;
-use Shopimind\Model\ShopimindSyncErrors;
+use Shopimind\lib\SyncHttpClient;
 
 class SyncCustomersAddresses
 {
     /**
      * Process synchronization for customers addresses
      *
-     * @param $lastUpdate
-     * @param $ids
-     * @param $idShopAskSyncs
+     * @param array $param
      * @return array
      */
-    public static function processSyncCustomersAddresses( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
-    {
-        $customerAddressesIds = null;
-        if ( !empty( $ids ) ) {
-            $customerAddressesIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-        }
-
-        if ( empty( $lastUpdate ) ) {
-            if ( empty( $customerAddressesIds ) ) {
-                $count = AddressQuery::create()->find()->count();
-            }else {
-                $count = AddressQuery::create()->filterById( $customerAddressesIds )->find()->count();
-            }
-        } else {
-            if ( empty( $customerAddressesIds ) ) {
-                $count = AddressQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }else {
-                $count = AddressQuery::create()->filterById( $customerAddressesIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }
-        }
-
-        if ( !empty( $idShopAskSyncs ) ) {
-            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'customers_addresses' );
-            
-            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'customers_addresses' );
-            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
-            if( $oldCount > 0 ){
-                $count = $oldCount;
-            }
-
-            $objectStatus = [
-                "status" => "in_progress",
-                "total_objects_count" => $count,
-            ];
-            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );
-        }
-
-        if ( $count == 0 ) {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );
-            }
-            
-            return [
-                'success' => true,
-                'count' => 0,
-            ];
-        }
-
-        $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
-        if (
-            $synchronizationStatus &&
-            isset($synchronizationStatus['synchronization_status']['customers_addresses'])
-            && $synchronizationStatus['synchronization_status']['customers_addresses'] == 1
-            ) {
-            return [
-                'success' => false,
-                'message' => 'A previous process is still running.',
-            ];
-        }
-
-        Utils::updateSynchronizationStatus( 'customers_addresses', 1 );
-
-        Utils::launchSynchronisation( 'customers-addresses', $lastUpdate, $customerAddressesIds, $requestedBy, $idShopAskSyncs );
-
-        return [
-            'success' => true,
-            'count' => $count,
-        ];
-    }
-
-    /**
-     * Synchronizes customers addresses.
-     *
-     * @return void
-     */
-    public static function syncCustomersAddresses( Request $request )
+    public static function processSyncCustomersAddresses( array $param ): array
     {
         try {
-            $body =  json_decode( $request->getContent(), true );
+            $offset = isset( $param['start'] ) ? (int) $param['start'] : 0;
+            $limit = isset( $param['limit'] ) ? (int) $param['limit'] : 20;
+            $idsRequested = ( array_key_exists( 'ids', $param ) ) ? $param['ids'] : '';
+            $lastUpdate = ( array_key_exists( 'lastUpdate', $param ) ) ? $param['lastUpdate'] : '';
 
-            $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
-
-            $customerAddressesIds = null;
-            $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
-            if ( !empty( $ids ) ) {
-                $customerAddressesIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
+            $extraHeaders = [];
+            if (!empty($param['id_shop_ask_syncs'])) {
+                $extraHeaders['X-Shopimind-Sync-Id'] = $param['id_shop_ask_syncs'];
             }
-
-            $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
-
-            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
-
-            $offset = 0;
-            $limit = 20;
 
             $hasMore = true;
 
-            do {
-                if ( empty( $lastUpdate ) ) {
-                    if ( empty( $customerAddressesIds ) ) {
-                        $customersAddresses = AddressQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('customer_id')
-                            ->find();
-                    }else {
-                        $customersAddresses = AddressQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $customerAddressesIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('customer_id')
-                            ->find();                        
-                    }
-                } else {
-                    $lastUpdate = trim( $lastUpdate, '"\'');
-                    if ( empty( $customerAddressesIds ) ) {
-                        $customersAddresses = AddressQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('customer_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }else {
-                        $customersAddresses = AddressQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $customerAddressesIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('customer_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );                        
-                    }
-                }
-        
-                if ( $customersAddresses->count() < $limit ) {
-                    $hasMore = false;
-                } else {
-                    $offset += $limit;    
-                }
-        
-                if ( $customersAddresses->count() > 0 ) {
-                    $data = [];
-                    foreach ( $customersAddresses as $customerAddress ) {
-                        $customerId = $customerAddress->getCustomerId();
-                        $data[ $customerId ][] = CustomersAddressesData::formatCustomerAddress( $customerAddress );
-                    }
-        
-                    foreach ( $data as $customerId => $value ) {
-                        $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
-                        $response = SpmCustomersAddresses::bulkSave( Utils::getAuth( $requestHeaders ), $customerId, $value );
-                        
-                        if ( !empty( $idShopAskSyncs ) ) {
-                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'customers_addresses', $response, count( $value ) );
+            $query = AddressQuery::create();
 
-                            $lastObject = end( $value );
-                            $lastObjectUpdate = $lastObject['updated_at'];
-                            $objectStatus = [
-                                "last_object_update" => $lastObjectUpdate,
-                            ];
-                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );  
-
-                            $errorData = $value;
-                            foreach ($errorData as &$item) {
-                                $item['customer_id'] = $customerId;
-                            }
-                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'customers_addresses', $response, $errorData );
-                        }
-
-                        Utils::handleResponse( $response );
-                        
-                        Utils::log( 'customersAddresses' ,'passive synchronization' , json_encode( $response ) );
-                    }
-                }
-            } while ( $hasMore );
-        
-        } catch (\Throwable $th) {
-            Utils::log( 'customersAddresses' ,'passive synchronization' , $th->getMessage() );
-        }  finally {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'customers_addresses', $objectStatus );
+            if ( !empty( $lastUpdate ) && $lastUpdate !== 'null' ) {
+                $lastUpdate = trim( $lastUpdate, '"\'' );
+                $query->filterByUpdatedAt( $lastUpdate, '>=' );
             }
 
-            Utils::log( 'customersAddresses', 'passive synchronization', 'finally', null);
-            Utils::updateSynchronizationStatus( 'customers_addresses', 0 );
+            if ( !empty( $idsRequested ) ) {
+                $idsRequested = is_array( $idsRequested ) ? $idsRequested : explode( ',', (string) $idsRequested );
+                $query->filterById( $idsRequested );
+            }
+
+            if ( isset( $param['just_count'] ) && $param['just_count'] ) {
+                $count = $query->count();
+
+                return [
+                    'success' => true,
+                    'total_count' => (int) $count
+                ];
+            }
+
+            $query->orderByUpdatedAt();
+            $query->orderBy( 'customer_id' );
+            // Tri total (updated_at, customer_id, id) : sans id, les adresses d'un même client au même updated_at peuvent changer d'ordre d'une page à l'autre.
+            $query->orderById();
+            $query->offset( $offset );
+            $query->limit( $limit );
+
+            $customersAddresses = $query->find();
+
+            if ( $customersAddresses->count() < $limit ) {
+                $hasMore = false;
+            }
+
+            if ( $customersAddresses->count() > 0 ) {
+                $sentCount = 0;
+                $failedCount = 0;
+                $rejectedCount = 0;
+                $errors = [];
+
+                $data = [];
+                foreach ( $customersAddresses as $customerAddress ) {
+                    $formattedAddress = CustomersAddressesData::formatCustomerAddress( $customerAddress );
+                    $formattedAddress['customer_id'] = strval( $customerAddress->getCustomerId() );
+                    $data[] = $formattedAddress;
+                }
+
+                $lastObjectUpdate = null;
+                foreach ($data as $item) {
+                    $dateUpd = $item['updated_at'] ?? $item['date_upd'] ?? null;
+                    if ($dateUpd !== null && ($lastObjectUpdate === null || $dateUpd > $lastObjectUpdate)) {
+                        $lastObjectUpdate = $dateUpd;
+                    }
+                }
+
+                $apiMaxObjects = 20;
+                $chunks = array_chunk($data, $apiMaxObjects);
+                foreach ($chunks as $chunk) {
+                    $response = SyncHttpClient::executeWithRetry(
+                        function() use ($chunk, $extraHeaders) {
+                            return SpmCustomersAddresses::bulkSaveAll(Utils::getAuth($extraHeaders), $chunk);
+                        },
+                        'SyncCustomersAddresses (bulk ' . count($chunk) . ' addresses)'
+                    );
+
+                    Utils::log( 'customersAddresses', 'passive synchronization', json_encode( $response ) );
+
+                    $success = isset( $response['statusCode'] ) && $response['statusCode'] === 200;
+
+                    if ($success) {
+                        $counters = SyncHttpClient::extractCounters($response, count($chunk));
+                        $sentCount += $counters['sent_count'];
+                        $rejectedCount += $counters['rejected_count'];
+                    } else {
+                        $failedCount += count($chunk);
+                        $errors[] = [
+                            'message' => $response['message'] ?? 'Unknown error',
+                            'status_code' => $response['statusCode'] ?? 0
+                        ];
+                    }
+                }
+
+                return [
+                    'success' => $failedCount === 0,
+                    'sent_count' => $sentCount,
+                    'failed_count' => $failedCount,
+                    'rejected_count' => $rejectedCount,
+                    'has_more' => $hasMore,
+                    'last_object_update' => $lastObjectUpdate,
+                    'errors' => $errors
+                ];
+            } else {
+                return [
+                    'success' => true,
+                    'sent_count' => 0,
+                    'failed_count' => 0,
+                    'rejected_count' => 0,
+                    'has_more' => false,
+                    'last_object_update' => null
+                ];
+            }
+        } catch ( \Throwable $th ) {
+            Utils::logException( 'Passive', 'customersAddresses', $th );
+            return [
+                'success' => false,
+                'sent_count' => 0,
+                'failed_count' => 0,
+                'rejected_count' => 0,
+                'has_more' => false,
+                'last_object_update' => null,
+                'errors' => [ [ 'message' => Utils::toUtf8( $th->getMessage() ), 'status_code' => 0 ] ]
+            ];
         }
     }
 }

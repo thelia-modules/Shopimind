@@ -67,8 +67,9 @@ class ProductsListener
             $productTranslated = $product->getTranslation( $lang->getLocale() );
             $data[] = ProductsData::formatProduct( $product, $productTranslated, $productDefault, $dispatcher );
         }
-        $response = SpmProducts::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmProducts::bulkSave( Utils::getAuth(), $data );
         Utils::handleResponse( $response );
+
         Utils::log( 'Products', 'Update', json_encode( $response ), $product->getId() );
     }
 

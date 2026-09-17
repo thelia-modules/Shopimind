@@ -8,6 +8,9 @@ use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmVoucher;
 use Shopimind\Data\VouchersData;
 use Thelia\Model\Base\LangQuery;
+use Thelia\Model\CouponI18nQuery;
+use Thelia\Model\CouponQuery;
+use Thelia\Model\Coupon;
 
 class VouchersListener
 {
@@ -18,25 +21,7 @@ class VouchersListener
      */
     public static function postCouponInsert(CouponEvent $event): void
     {
-        $coupon = $event->getModel();
-
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $couponDefault = $coupon->getTranslation( $defaultLocal );
-
-        $data = [];
-
-        foreach ( $langs as $lang ) {
-            $couponTranslated = $coupon->getTranslation( $lang->getLocale() );
-
-            $data[] = VouchersData::formatVoucher( $coupon, $couponTranslated, $couponDefault );
-        }
-
-        $response = SpmVoucher::bulkSave( Utils::getAuth(), $data );
-        
-        Utils::handleResponse( $response );
-
-        Utils::log( 'Voucher', 'Insert', json_encode( $response ), $coupon->getId() );
+        self::syncCoupon( $event->getModel(), 'Insert' );
     }
 
     /**
@@ -46,25 +31,7 @@ class VouchersListener
      */
     public static function postCouponUpdate(CouponEvent $event): void
     {
-        $coupon = $event->getModel();
-        
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        $couponDefault = $coupon->getTranslation( $defaultLocal );
-        
-        $data = [];
-
-        foreach ( $langs as $lang ) {
-            $couponTranslated = $coupon->getTranslation( $lang->getLocale() );
-
-            $data[] = VouchersData::formatVoucher( $coupon, $couponTranslated, $couponDefault );
-        }
-
-        $response = SpmVoucher::bulkUpdate( Utils::getAuth(), $data );
-        
-        Utils::handleResponse( $response );
-
-        Utils::log( 'Voucher', 'Update', json_encode( $response ), $coupon->getId() );
+        self::syncCoupon( $event->getModel(), 'Update' );
     }
 
     /**
@@ -81,5 +48,45 @@ class VouchersListener
         Utils::handleResponse( $response );
 
         Utils::log( 'Voucher', 'Delete', json_encode( $response ), $coupon );
+    }
+
+    /**
+     * Envoie le bon dans chaque langue active.
+     *
+     * @param Coupon $coupon
+     * @param string $action libellé du log
+     */
+    public static function syncCoupon( Coupon $coupon, string $action ): void
+    {
+        $couponId = $coupon->getId();
+
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
+
+        $couponDefault = CouponI18nQuery::create()
+            ->filterById( $couponId )
+            ->filterByLocale( $defaultLocal )
+            ->findOne();
+
+        $data = [];
+
+        foreach ( $langs as $lang ) {
+            $couponTranslated = CouponI18nQuery::create()
+                ->filterById( $couponId )
+                ->filterByLocale( $lang->getLocale() )
+                ->findOne();
+
+            if ( !$couponTranslated ) {
+                $couponTranslated = $couponDefault;
+            }
+
+            $data[] = VouchersData::formatVoucher( $coupon, $couponTranslated, $couponDefault );
+        }
+
+        $response = SpmVoucher::bulkSave( Utils::getAuth(), $data );
+
+        Utils::handleResponse( $response );
+
+        Utils::log( 'Voucher', $action, json_encode( $response ), $couponId );
     }
 }

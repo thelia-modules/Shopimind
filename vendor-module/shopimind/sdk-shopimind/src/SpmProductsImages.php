@@ -61,6 +61,11 @@ class SpmProductsImages
         return self::processBulkSave( $auth, $endpoint, $data );
     }
 
+    public static function bulkSaveAll( $auth, $data )
+    {
+        return self::processBulkSave( $auth, 'products/images/bulk', $data );
+    }
+
     public function update(){
         $data = [
             'image_id' => $this->image_id,

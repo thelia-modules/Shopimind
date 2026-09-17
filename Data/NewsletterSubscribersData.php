@@ -6,11 +6,12 @@ use Thelia\Model\NewsletterQuery;
 use Thelia\Model\AddressQuery;
 use Thelia\Model\CustomerQuery;
 use Thelia\Model\Newsletter;
+use Shopimind\lib\Utils;
 
 class NewsletterSubscribersData
 {
     /**
-     * Formats the newsletter data to match the Shopimind format.
+     * Formats the newsletter data to match the ShopiMind format.
      *
      * @param Newsletter $newsletter
      * @return array
@@ -24,9 +25,10 @@ class NewsletterSubscribersData
             "last_name" => $newsletter->getLastname() ? $newsletter->getLastname() : "" ,
             "postal_code" => self::getZipCode( $newsletter->getEmail() ),
             "lang" => substr( $newsletter->getLocale() , 0, 2 ),
-            "updated_at" => $newsletter->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+            "updated_at" => $newsletter->getUpdatedAt()->format('Y-m-d\TH:i:s.uP')
         ];
 
+        $data['source_label'] = Utils::getSourceLabel();
         return $data;
     }
 
@@ -53,32 +55,15 @@ class NewsletterSubscribersData
     public static function getZipCode( string $email ) {
         $customer = CustomerQuery::create()->findOneByEmail( $email );
         if ( !empty( $customer ) ) {
-            $customerId = $customer->getId();
-            $address = AddressQuery::create()->findOneByCustomerId( $customerId );
-            $zipCode = !empty($address) ? $address->getZipCode() : '';
-            return $zipCode;
-        }
-        return "0";
-    }
-
-    /**
-     * Format data to update customer after newslettersubscribing update
-     *
-     * @param string $email
-     */
-    public static function customerData( string $email ): array
-    {
-        $customer = CustomerQuery::create()->findOneByEmail( $email );
-        
-        $customerData = [];
-        
-        if ( !empty( $customer ) ) {
-            $customerData = [
-                'customer_id' => $customer->getId(),
-                'is_newsletter_subscribed' => self::isNewsletterSubscribed( $email ),
-            ];
+            $address = AddressQuery::create()->findOneByCustomerId( $customer->getId() );
+            if ( !empty( $address ) ) {
+                return Utils::sanitizePostalCode( $address->getZipCode() );
+            }
         }
 
-        return $customerData;
+        // postal_code est facultatif pour ShopiMind (null accepté) mais, s'il est présent, doit respecter
+        // /^[\w\s\-]+$/ : la chaîne vide (client sans adresse) faisait rejeter l'abonné, et "0"
+        // (prospect sans compte) enregistrait un faux code postal.
+        return null;
     }
 }

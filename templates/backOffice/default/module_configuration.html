@@ -15,6 +15,12 @@
             {/if}
         {/form_field}
 
+        {form_field form=$form field="reconnectionNeeded"}
+            {if $value ne ''}
+            <div class="msg errorMsg">{intl d='shopimind' l=$value}</div>
+            {/if}
+        {/form_field}
+
         {form_field form=$form field="successMsg"}
             {if $value ne ''}
             <div class="msg successMsg">{intl d='shopimind' l=$value}</div>
@@ -94,7 +100,7 @@
         </div>
 
         <div class="check-box-form">
-            <label class="form-label"><span>* </span> {intl d='shopimind' l='Activate the tag script of Shopimind ?'}</label>
+            <label class="form-label"><span>* </span> {intl d='shopimind' l='Activate the tag script of ShopiMind ?'}</label>
             <div>
                 {form_field form=$form field="script-tag" class="switch"}
                     <label class="switch">
@@ -107,15 +113,28 @@
         </div>
         
         <div class="check-box-form">
-            <label class="form-label"><span>* </span> {intl d='shopimind' l='Activate logs ?'}</label>
+            <label class="form-label"><span>* </span> {intl d='shopimind' l='Hide the tag on checkout pages ?'}</label>
             <div>
-                {form_field form=$form field="log" class="switch"}
+                {form_field form=$form field="hide-on-checkout" class="switch"}
                     <label class="switch">
-                        <input type="checkbox" name="shopimind_form_shopimind_form[log]" {if $data == 1}checked{/if} value="1">
+                        <input type="checkbox" name="shopimind_form_shopimind_form[hide-on-checkout]" {if $data == 1}checked{/if} value="1">
                         <span class="slider"></span>
                     </label>
                 {/form_field}
-                <div class="help">{intl d='shopimind' l='Enabling logs allows for the recording of system or application events, providing a record that can be used for troubleshooting.'}</div>
+                <div class="help">{intl d='shopimind' l='The ShopiMind tag is not injected on the checkout pages.'}</div>
+            </div>
+        </div>
+
+        <div class="check-box-form">
+            <label class="form-label"><span>* </span> {intl d='shopimind' l='Cache workaround ?'}</label>
+            <div>
+                {form_field form=$form field="cache-workaround" class="switch"}
+                    <label class="switch">
+                        <input type="checkbox" name="shopimind_form_shopimind_form[cache-workaround]" {if $data == 1}checked{/if} value="1">
+                        <span class="slider"></span>
+                    </label>
+                {/form_field}
+                <div class="help">{intl d='shopimind' l='Customer and cart data are loaded after the page, so that a page cache never shows them to another visitor.'}</div>
             </div>
         </div>
 
@@ -132,6 +151,78 @@
                 <div class="help" style="margin-top: 11px;">{intl d='shopimind' l='Select order statuses to be considered as confirmed'}</div>
             </div>
         </div>
+
+        <div class="form-group" style="align-items: baseline;">
+            <label class="form-label">{intl d='shopimind' l='Customer titles considered as Mr'}</label>
+            <div class="multi-select-container">
+                {form_field form=$form field="gender-mr-titles"}
+                    <select multiple name="shopimind_form_shopimind_form[gender-mr-titles][]" id="gender-mr-titles" multiple="multiple" class="form-control select2">
+                        {foreach $choices as $choice}
+                            <option value="{$choice->value}" {if $choice->value|in_array:$data}selected{/if}>{$choice->label}</option>
+                        {/foreach}
+                    </select>
+                {/form_field}
+                <div class="help" style="margin-top: 11px;">{intl d='shopimind' l='Customer titles mapped to ShopiMind gender = 1 (Mr). Titles selected in neither list map to 0 (unknown).'}</div>
+            </div>
+        </div>
+
+        <div class="form-group" style="align-items: baseline;">
+            <label class="form-label">{intl d='shopimind' l='Customer titles considered as Mme'}</label>
+            <div class="multi-select-container">
+                {form_field form=$form field="gender-mme-titles"}
+                    <select multiple name="shopimind_form_shopimind_form[gender-mme-titles][]" id="gender-mme-titles" multiple="multiple" class="form-control select2">
+                        {foreach $choices as $choice}
+                            <option value="{$choice->value}" {if $choice->value|in_array:$data}selected{/if}>{$choice->label}</option>
+                        {/foreach}
+                    </select>
+                {/form_field}
+                <div class="help" style="margin-top: 11px;">{intl d='shopimind' l='Customer titles mapped to ShopiMind gender = 2 (Mme).'}</div>
+            </div>
+        </div>
+
+        <fieldset class="debug-section">
+            <legend>{intl d='shopimind' l='Developer / Debug'}</legend>
+
+            <div class="form-group" style="align-items: baseline;">
+                <label class="form-label" for="log-level">{intl d='shopimind' l='Log level'}</label>
+                <div class="field-container">
+                    {form_field form=$form field="log-level"}
+                        <select name="shopimind_form_shopimind_form[log-level]" id="log-level" class="form-control">
+                            {foreach $choices as $choice}
+                                <option value="{$choice->value}" {if $choice->value == $value}selected{/if}>{intl d='shopimind' l=$choice->label}</option>
+                            {/foreach}
+                        </select>
+                    {/form_field}
+                    <div class="help">{intl d='shopimind' l='Logs are written to the shopimind.log file. Use Debug only for a diagnosis.'}</div>
+                </div>
+            </div>
+
+            <div class="form-group" style="align-items: baseline;">
+                <label class="form-label" for="core-api-url-override">{intl d='shopimind' l='ShopiMind API URL'}</label>
+                <div class="field-container">
+                    {form_field form=$form field="core-api-url-override"}
+                        <input type="url" name="shopimind_form_shopimind_form[core-api-url-override]" id="core-api-url-override" value="{$data}" class="form-control" placeholder="https://core.shopimind.com">
+                    {/form_field}
+                    <div class="help">{intl d='shopimind' l='Used only when the log level is Debug. Leave empty to use the default URL.'}</div>
+                    {form_field form=$form field="core-api-url"}
+                        <div class="help">{intl d='shopimind' l='URL in use:'} <code>{$value}</code></div>
+                    {/form_field}
+                </div>
+            </div>
+
+            <div class="form-group" style="align-items: baseline;">
+                <label class="form-label" for="script-url-override">{intl d='shopimind' l='Tracking script URL'}</label>
+                <div class="field-container">
+                    {form_field form=$form field="script-url-override"}
+                        <input type="url" name="shopimind_form_shopimind_form[script-url-override]" id="script-url-override" value="{$data}" class="form-control" placeholder="https://v2.app-spm.com">
+                    {/form_field}
+                    <div class="help">{intl d='shopimind' l='Used only when the log level is Debug. Leave empty to use the default URL.'}</div>
+                    {form_field form=$form field="script-url"}
+                        <div class="help">{intl d='shopimind' l='URL in use:'} <code>{$value}</code></div>
+                    {/form_field}
+                </div>
+            </div>
+        </fieldset>
 
         <div class="submit-container">
             <input type="submit" class="form-submit-button btn btn-sm btn-success" value="{intl d='shopimind' l='Validate'}">
@@ -265,6 +356,34 @@
         justify-content: end;
     }
 
+    .shopimind-form .debug-section{
+        margin: 10px 0 25px;
+        padding-top: 20px;
+        border-top: 1px solid #e6e6e6;
+    }
+
+    .shopimind-form .debug-section legend{
+        width: auto;
+        margin-bottom: 20px;
+        padding-right: 10px;
+        border: none;
+        font-size: 16px;
+        color: #5e5a5a;
+    }
+
+    .shopimind-form .field-container{
+        width: 50%;
+    }
+
+    .shopimind-form .field-container input,
+    .shopimind-form .field-container select{
+        width: 100%;
+    }
+
+    .shopimind-form .field-container .help{
+        margin-top: 6px;
+    }
+
     .tabcontent{
         display: none;
     }
@@ -357,6 +476,12 @@
             $('#confirmed-statuses').select2({
                 placeholder: "{intl d='shopimind' l='Select order statuses to be considered as confirmed'}",
                 placeholder: "Select order statuses to be considered as confirmed",
+                allowClear: true,
+                multiple: true,
+                closeOnSelect: false
+            });
+            $('#gender-mr-titles, #gender-mme-titles').select2({
+                placeholder: "{intl d='shopimind' l='Select customer titles'}",
                 allowClear: true,
                 multiple: true,
                 closeOnSelect: false

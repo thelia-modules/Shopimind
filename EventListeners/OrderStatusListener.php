@@ -61,7 +61,7 @@ class OrderStatusListener
             $data[] = OrderStatusData::formatOrderStatus( $orderStatus, $orderStatusTranslated, $orderStatusDefault );
         }
         
-        $response = SpmOrdersStatus::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmOrdersStatus::bulkSave( Utils::getAuth(), $data );
         
         Utils::handleResponse( $response );
 

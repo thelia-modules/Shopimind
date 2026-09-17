@@ -6,6 +6,7 @@ event_priorities:
   order_coupon: 128
   orders: 128
   orders_status: 128
+  orders_carriers: 128
   products: 128
   products_images: 128
   products_categories: 128

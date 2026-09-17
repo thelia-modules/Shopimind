@@ -40,7 +40,7 @@ class OrderListener
         
         $data[] = OrdersData::formatOrder( $order );
 
-        $response = SpmOrders::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmOrders::bulkSave( Utils::getAuth(), $data );
         
         Utils::handleResponse( $response );
 

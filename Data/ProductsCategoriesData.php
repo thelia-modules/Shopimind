@@ -5,11 +5,12 @@ namespace Shopimind\Data;
 use Thelia\Model\Category;
 use Thelia\Model\CategoryI18n;
 use Thelia\Model\Base\LangQuery;
+use Shopimind\lib\Utils;
 
 class ProductsCategoriesData
 {
     /**
-     * Formats the product category data to match the Shopimind format.
+     * Formats the product category data to match the ShopiMind format.
      *
      * @param Category $productCategory
      * @param CategoryI18n $categoryTranslated
@@ -18,7 +19,7 @@ class ProductsCategoriesData
      */
     public static function formatProductCategory( Category $productCategory, CategoryI18n $categoryTranslated, CategoryI18n $categoryDefault ): array
     {
-        return [
+        $data = [
             "category_id" => intval( $productCategory->getId() ),
             "lang" => substr( $categoryTranslated->getLocale()  , 0, 2 ),
             "name" => self::getName( $categoryTranslated, $categoryDefault ) ?? '',
@@ -26,9 +27,12 @@ class ProductsCategoriesData
             "parent_category_id" => $productCategory->getParent() ? intval( $productCategory->getParent() ) : null,
             "link" => $productCategory->getUrl( $categoryTranslated->getLocale() ),
             "is_active" => ( bool ) $productCategory->getVisible(),
-            "created_at" => $productCategory->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            "updated_at" => $productCategory->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+            "created_at" => $productCategory->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+            "updated_at" => $productCategory->getUpdatedAt()->format('Y-m-d\TH:i:s.uP')
         ];
+
+        $data['source_label'] = Utils::getSourceLabel();
+        return $data;
     }
 
     /**

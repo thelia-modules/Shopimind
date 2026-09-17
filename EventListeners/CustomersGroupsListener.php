@@ -19,25 +19,30 @@ class CustomersGroupsListener
      */
     public static function postCustomerGroupInsert(CustomerFamilyEvent $event): void
     {
-        // $customerGroup = $event->getCustomerFamily();
+        // Traité au flush de fin de requête (SyncBuffer), une fois le groupe et ses traductions
+        // enregistrés. Jusqu'ici, un groupe créé ne partait qu'à sa première modification.
+        $customerGroup = $event->getCustomerFamily();
+        if ( empty( $customerGroup ) || !$customerGroup->getId() ) {
+            return;
+        }
 
-        // $langs = LangQuery::create()->filterByActive( 1 )->find();
-        // $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
-        // $customerGroupDefault = $customerGroup->getTranslation( $defaultLocal );
+        $langs = LangQuery::create()->filterByActive( 1 )->find();
+        $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
+        $customerGroupDefault = $customerGroup->getTranslation( $defaultLocal );
 
-        // $data = [];
+        $data = [];
 
-        // foreach ( $langs as $lang ) {
-        //     $customerGroupTranslated = $customerGroup->getTranslation( $lang->getLocale() );
+        foreach ( $langs as $lang ) {
+            $customerGroupTranslated = $customerGroup->getTranslation( $lang->getLocale() );
 
-        //     $data[] = CustomersGroupsData::formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
-        // }
+            $data[] = CustomersGroupsData::formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
+        }
 
-        // $response = SpmCustomersGroups::bulkSave( Utils::getAuth(), $data );
-        
-        // Utils::handleResponse( $response );
+        $response = SpmCustomersGroups::bulkSave( Utils::getAuth(), $data );
 
-        // Utils::log( 'CustomerGroup', 'Save', json_encode( $data ), $customerGroup->getId() );
+        Utils::handleResponse( $response );
+
+        Utils::log( 'CustomerGroup', 'Save', json_encode( $response ), $customerGroup->getId() );
     }
 
     /**
@@ -61,7 +66,7 @@ class CustomersGroupsListener
             $data[] = CustomersGroupsData::formatCustomerGroup( $customerGroup, $customerGroupTranslated, $customerGroupDefault );
         }
 
-        $response = SpmCustomersGroups::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmCustomersGroups::bulkSave( Utils::getAuth(), $data );
         
         Utils::handleResponse( $response );
 

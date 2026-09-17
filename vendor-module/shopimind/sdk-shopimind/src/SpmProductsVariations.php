@@ -98,6 +98,11 @@ class SpmProductsVariations
         return self::processBulkSave( $auth, $endpoint, $data );
     }
 
+    public static function bulkSaveAll( $auth, $data )
+    {
+        return self::processBulkSave( $auth, 'products/variations/bulk', $data );
+    }
+
     public function update(){
         $data = [
             'variation_id' => $this->variation_id,

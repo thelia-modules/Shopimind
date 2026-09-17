@@ -7,220 +7,154 @@ require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 use Thelia\Model\ProductQuery;
 use Thelia\Model\Base\LangQuery;
 use Shopimind\lib\Utils;
+use Shopimind\lib\SyncHttpClient;
 use Shopimind\Data\ProductsData;
 use Shopimind\SdkShopimind\SpmProducts;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
-use Shopimind\Model\ShopimindSyncStatus;
-use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProducts extends AbstractController
 {
     /**
      * Process synchronization for products
      *
-     * @param $lastUpdate
-     * @param $ids
-     * @param $idShopAskSyncs
+     * @param array $param
+     * @param EventDispatcherInterface $dispatcher
      * @return array
      */
-    public static function processSyncProducts( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
-    {
-        $productsIds = null;
-        if ( !empty( $ids ) ) {
-            $productsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-        }
-
-        if ( empty( $lastUpdate ) ) {
-            if ( empty( $productsIds ) ) {
-                $count = ProductQuery::create()->find()->count();
-            }else {
-                $count = ProductQuery::create()->filterById( $productsIds )->find()->count();
-            }
-        } else {
-            if ( empty( $productsIds ) ) {
-                $count = ProductQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }else {
-                $count = ProductQuery::create()->filterById( $productsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();                
-            }
-        }
-
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $count = $count * $langs->count();
-
-        if ( !empty( $idShopAskSyncs ) ) {
-            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products' );
-
-            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products' );
-            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
-            if( $oldCount > 0 ){
-                $count = $oldCount;
-            }
-
-            $objectStatus = [
-                "status" => "in_progress",
-                "total_objects_count" => $count + $oldCount,
-            ];
-            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );
-        }
-
-        if ( $count == 0 ) {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );
-            }
-            
-            return [
-                'success' => true,
-                'count' => 0,
-            ];
-        }
-
-        $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
-        if (
-            $synchronizationStatus &&
-            isset($synchronizationStatus['synchronization_status']['products'])
-            && $synchronizationStatus['synchronization_status']['products'] == 1
-            ) {
-            return [
-                'success' => false,
-                'message' => 'A previous process is still running.',
-            ];
-        }
-
-        Utils::updateSynchronizationStatus( 'products', 1 );
-
-        Utils::launchSynchronisation( 'products', $lastUpdate, $productsIds, $requestedBy, $idShopAskSyncs );
-
-        return [
-            'success' => true,
-            'count' => $count,
-        ];
-    }
-
-    /**
-     * Synchronizes products.
-     *
-     * @return void
-     */
-    public static function syncProducts( Request $request, EventDispatcherInterface $dispatcher )
+    public static function processSyncProducts( array $param, EventDispatcherInterface $dispatcher = null ): array
     {
         try {
-            $body =  json_decode( $request->getContent(), true );
-
-            $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
-
-            $productsIds = null;
-            $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
-            if ( !empty( $ids ) ) {
-                $productsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-            }
-
-            $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
-
-            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
-
             $langs = LangQuery::create()->filterByActive( 1 )->find();
-            $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
+            $defaultLocal = LangQuery::create()->findOneByByDefault( true )->getLocale();
+            $langsCount = $langs->count();
 
-            $offset = 0;
-            $limit = intdiv( 20, $langs->count() );
+            $offset = isset( $param['start'] ) ? (int) $param['start'] : 0;
+            $limit = isset( $param['limit'] ) ? (int) $param['limit'] : 20;
+            $apiMaxObjects = 20;
+            $idsRequested = ( array_key_exists( 'ids', $param ) ) ? $param['ids'] : '';
+            $lastUpdate = ( array_key_exists( 'lastUpdate', $param ) ) ? $param['lastUpdate'] : '';
+
+            $extraHeaders = [];
+            if (!empty($param['id_shop_ask_syncs'])) {
+                $extraHeaders['X-Shopimind-Sync-Id'] = $param['id_shop_ask_syncs'];
+            }
 
             $hasMore = true;
 
-            do {
-                if ( empty( $lastUpdate ) ) {
-                    if ( empty( $productsIds ) ) {
-                        $products = ProductQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->find();
-                    }else {
-                        $products = ProductQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->find();
-                    }
-                } else {
-                    $lastUpdate = trim( $lastUpdate, '"\'');
-                    if ( empty( $productsIds ) ) {
-                        $products = ProductQuery::create()
-                            ->orderByUpdatedAt()    
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }else {
-                        $products = ProductQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }
-                }
-        
-                if ( $products->count() < $limit ) {
-                    $hasMore = false;
-                } else {
-                    $offset += $limit;    
-                }
-        
-                if ( $products->count() > 0 ) {
-                    $data = [];
-        
-                    foreach ( $products as $product ) {
-                        $productDefault = $product->getTranslation( $defaultLocal );
-        
-                        foreach ( $langs as $lang ) {
-                            $productTranslated = $product->getTranslation( $lang->getLocale() );
-        
-                            $data[] = ProductsData::formatProduct( $product, $productTranslated, $productDefault, $dispatcher );
-                        }
-                    }
+            $query = ProductQuery::create();
 
-                    $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
-                    $response = SpmProducts::bulkSave( Utils::getAuth( $requestHeaders ), $data );
-                    
-                    if ( !empty( $idShopAskSyncs ) ) {
-                        ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products', $response, count( $data ) );
-
-                        $lastObject = end( $data );
-                        $lastObjectUpdate = $lastObject['updated_at'];
-                        $objectStatus = [
-                            "last_object_update" => $lastObjectUpdate,
-                        ];
-                        ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );  
-                        
-                        ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products', $response, $data );
-                    }
-
-                    Utils::handleResponse( $response );
-        
-                    Utils::log( 'products' , 'passive synchronization' , json_encode( $response ) );
-
-                }
-
-            } while ( $hasMore );
-        
-        } catch (\Throwable $th) {
-            Utils::log( 'products' , 'passive synchronization' , $th->getMessage() );
-        } finally {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products', $objectStatus );
+            if ( !empty( $lastUpdate ) && $lastUpdate !== 'null' ) {
+                $lastUpdate = trim( $lastUpdate, '"\'' );
+                $query->filterByUpdatedAt( $lastUpdate, '>=' );
             }
 
-            Utils::log( 'products', 'passive synchronization', 'finally', null);
-            Utils::updateSynchronizationStatus( 'products', 0 );
+            if ( !empty( $idsRequested ) ) {
+                $idsRequested = is_array( $idsRequested ) ? $idsRequested : explode( ',', (string) $idsRequested );
+                $query->filterById( $idsRequested );
+            }
+
+            if ( isset( $param['just_count'] ) && $param['just_count'] ) {
+                $count = $query->count();
+
+                return [
+                    'success' => true,
+                    'total_count' => (int) $count * $langsCount
+                ];
+            }
+
+            $query->orderByUpdatedAt();
+            // Tri total (updated_at, id) : sans id, les lignes au même updated_at peuvent changer d'ordre d'une page à l'autre.
+            $query->orderById();
+            $query->offset( $offset );
+            $query->limit( $limit );
+
+            $products = $query->find();
+
+            if ( $products->count() < $limit ) {
+                $hasMore = false;
+            }
+
+            if ( $products->count() > 0 ) {
+                $data = [];
+                foreach ( $products as $product ) {
+                    $productDefault = $product->getTranslation( $defaultLocal );
+
+                    foreach ( $langs as $lang ) {
+                        $productTranslated = $product->getTranslation( $lang->getLocale() );
+                        $data[] = ProductsData::formatProduct( $product, $productTranslated, $productDefault, $dispatcher );
+                    }
+                }
+
+                $lastObjectUpdate = null;
+                foreach ($data as $item) {
+                    $dateUpd = $item['updated_at'] ?? $item['date_upd'] ?? null;
+                    if ($dateUpd !== null && ($lastObjectUpdate === null || $dateUpd > $lastObjectUpdate)) {
+                        $lastObjectUpdate = $dateUpd;
+                    }
+                }
+
+                $chunks = array_chunk( $data, $apiMaxObjects );
+                $sentCount = 0;
+                $failedCount = 0;
+                $rejectedCount = 0;
+                $errors = [];
+
+                foreach ( $chunks as $chunk ) {
+                    $response = SyncHttpClient::executeWithRetry(
+                        function() use ($chunk, $extraHeaders) {
+                            return SpmProducts::bulkSave(Utils::getAuth($extraHeaders), $chunk);
+                        },
+                        'SyncProducts'
+                    );
+
+                    Utils::log( 'products', 'passive synchronization', json_encode( $response ) );
+
+                    $success = isset( $response['statusCode'] ) && $response['statusCode'] === 200;
+
+                    if ($success) {
+                        $counters = SyncHttpClient::extractCounters($response, count($chunk));
+                        $sentCount += $counters['sent_count'];
+                        $rejectedCount += $counters['rejected_count'];
+                    } else {
+                        $failedCount += count($chunk);
+                        $errors[] = [
+                            'message' => $response['message'] ?? 'Unknown error',
+                            'status_code' => $response['statusCode'] ?? 0
+                        ];
+                    }
+                }
+
+                return [
+                    'success' => $failedCount === 0,
+                    'sent_count' => $sentCount,
+                    'failed_count' => $failedCount,
+                    'rejected_count' => $rejectedCount,
+                    'has_more' => $hasMore,
+                    'last_object_update' => $lastObjectUpdate,
+                    'errors' => $errors
+                ];
+            } else {
+                return [
+                    'success' => true,
+                    'sent_count' => 0,
+                    'failed_count' => 0,
+                    'rejected_count' => 0,
+                    'has_more' => false,
+                    'last_object_update' => null
+                ];
+            }
+        } catch ( \Throwable $th ) {
+            Utils::logException( 'Passive', 'products', $th );
+            return [
+                'success' => false,
+                'sent_count' => 0,
+                'failed_count' => 0,
+                'rejected_count' => 0,
+                'has_more' => false,
+                'last_object_update' => null,
+                'errors' => [ [ 'message' => Utils::toUtf8( $th->getMessage() ), 'status_code' => 0 ] ]
+            ];
         }
     }
 }

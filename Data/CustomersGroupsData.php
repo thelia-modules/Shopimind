@@ -4,11 +4,12 @@ namespace Shopimind\Data;
 
 use CustomerFamily\Model\CustomerFamily;
 use CustomerFamily\Model\CustomerFamilyI18n;
+use Shopimind\lib\Utils;
 
 class CustomersGroupsData
 {
     /**
-     * Formats the customer customerGroup data to match the Shopimind format.
+     * Formats the customer customerGroup data to match the ShopiMind format.
      *
      * @param CustomerFamily $customerGroup
      * @param CustomerFamilyI18n $customerGroupTranslated
@@ -26,10 +27,11 @@ class CustomersGroupsData
             "group_id" => strval( $customerGroup->getId() ),
             'lang' => substr( $customerGroupTranslated->getLocale()  , 0, 2 ),
             "name" => $customerGroupTranslated->getTitle() ?? $customersGroupDefault->getTitle(),
-            "created_at" => $createdAt->format('Y-m-d\TH:i:s.u\Z'),
-            "updated_at" => $updatedAt->format('Y-m-d\TH:i:s.u\Z'), 
+            "created_at" => $createdAt->format('Y-m-d\TH:i:s.uP'),
+            "updated_at" => $updatedAt->format('Y-m-d\TH:i:s.uP'), 
         ];
 
+        $data['source_label'] = Utils::getSourceLabel();
         return $data;
     }
 }

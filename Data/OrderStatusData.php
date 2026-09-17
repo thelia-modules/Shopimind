@@ -5,11 +5,12 @@ namespace Shopimind\Data;
 use Thelia\Model\OrderStatus;
 use Thelia\Model\OrderStatusI18n;
 use Thelia\Model\Base\LangQuery;
+use Shopimind\lib\Utils;
 
 class OrderStatusData
 {
     /**
-     * Formats the order status data to match the Shopimind format.
+     * Formats the order status data to match the ShopiMind format.
      *
      * @param OrderStatus $orderStatus
      * @param OrderStatusI18n $orderStatusTranslated
@@ -18,14 +19,17 @@ class OrderStatusData
      */
     public static function formatOrderStatus( OrderStatus $orderStatus, OrderStatusI18n $orderStatusTranslated, OrderStatusI18n $orderStatusDefault ): array
     {
-        return [
+        $data = [
             'status_id' => strval( $orderStatus->getId() ),
             'lang' => substr( $orderStatusTranslated->getLocale()  , 0, 2 ),
             'name' => self::getOrderStatusTitle($orderStatus, $orderStatusTranslated->getLocale()),
             'is_deleted'=> false,
-            'created_at' => $orderStatus->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            'updated_at' => $orderStatus->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+            'created_at' => $orderStatus->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+            'updated_at' => $orderStatus->getUpdatedAt()->format('Y-m-d\TH:i:s.uP')
         ];
+
+        $data['source_label'] = Utils::getSourceLabel();
+        return $data;
     }
 
     /**

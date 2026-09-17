@@ -1,13 +1,15 @@
 <?php
 namespace Shopimind\SdkShopimind\Traits;
+
 use ReflectionClass;
+use Shopimind\SdkShopimind\Exception\ClientException;
 
 trait Methods {
     private function processSave( $endpoint, $data ) {
         try {
             $response =  $this->auth->post( $endpoint, ['json' => [$data]]);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);
@@ -18,12 +20,12 @@ trait Methods {
             return ['error' => 'Unknown error'];
         }
     }
-    
+
     private static function processBulkSave( $httpClient, $endpoint, $data ) {
         try {
             $response = $httpClient->post( $endpoint, ['json' => $data]);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);
@@ -39,7 +41,7 @@ trait Methods {
         try {
             $response = $this->auth->put($endpoint, ['json' => [$data]]);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);
@@ -55,7 +57,7 @@ trait Methods {
         try {
             $response = $httpClient->put( $endpoint, ['json' => $data]);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);
@@ -71,7 +73,7 @@ trait Methods {
         try {
             $response = $httpClient->delete($endpoint . '/' . $id);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);
@@ -87,7 +89,7 @@ trait Methods {
         try {
             $response = $httpClient->post($endpoint, ['json' => $data]);
             return json_decode($response->getBody(), true);
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);

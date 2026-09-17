@@ -4,7 +4,6 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://symfony.com/schema/routing http://symfony.com/schema/routing/routing-1.0.xsd">
         
-    <!-- Webhook -->
     <route id="shopimind.configuration" path="/admin/module/shopimind/configuration" methods="post">
         <default key="_controller">Shopimind\Controller\ConfigurationController::saveConfiguration</default>
     </route>
@@ -21,87 +20,55 @@
         <default key="_controller">Shopimind\SpmWebHook\SpmSubscribeCustomer::subscribeCustomer</default>
     </route>
     
-    <!-- Workers -->
-    <route id="shopimind.workers.web-push-service" path="/shopimind/web-push-service-worker.js" methods="get">
+    <!-- Routes GET appelées en arrière-plan (tag, web push) : dont-save empêche Thelia de les retenir comme page de retour
+         après connexion. -->
+    <route id="shopimind.workers.web-push-service" path="/shopimind/web-push-service-worker" methods="get">
         <default key="_controller">Shopimind\Workers\WebPushServiceWorker::serveFile</default>
+        <default key="_previous_url">dont-save</default>
     </route>
 
-    <route id="shopimind.workers.platform" path="/shopimind/platform.js" methods="get">
+    <route id="shopimind.workers.platform" path="/shopimind/platform" methods="get">
         <default key="_controller">Shopimind\Workers\Platform::serveFile</default>
+        <default key="_previous_url">dont-save</default>
+    </route>
+
+    <!-- Anciennes URL en .js : bloquées par la configuration nginx recommandée par Thelia, gardées pour Apache et pour
+         les pages et abonnements web push créés avec une version précédente. -->
+    <route id="shopimind.workers.web-push-service-js" path="/shopimind/web-push-service-worker.js" methods="get">
+        <default key="_controller">Shopimind\Workers\WebPushServiceWorker::serveFile</default>
+        <default key="_previous_url">dont-save</default>
+    </route>
+
+    <route id="shopimind.workers.platform-js" path="/shopimind/platform.js" methods="get">
+        <default key="_controller">Shopimind\Workers\Platform::serveFile</default>
+        <default key="_previous_url">dont-save</default>
+    </route>
+
+    <route id="shopimind.workers.spm-cart" path="/shopimind/spm-cart.js" methods="get">
+        <default key="_controller">Shopimind\Workers\SpmCart::serveFile</default>
+        <default key="_previous_url">dont-save</default>
+    </route>
+
+
+    <route id="shopimind.spmq" path="/shopimind/spmq" methods="get">
+        <default key="_controller">Shopimind\Controller\SpmqController::getSpmq</default>
+        <default key="_previous_url">dont-save</default>
+    </route>
+
+    <route id="shopimind.cart-data" path="/shopimind/cart-data" methods="get">
+        <default key="_controller">Shopimind\Controller\CartDataController::getCartData</default>
+        <default key="_previous_url">dont-save</default>
     </route>
     
-    <!-- Passive synchronization -->
     <route id="shopimind.passive-synchronization" path="/shopimind/synchronize" methods="post">
         <default key="_controller">Shopimind\PassiveSynchronization\RequestHandler::requestController</default>
     </route>
 
-    <route id="shopimind.sync.customers" path="/shopimind/sync-customers" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomers::syncCustomers</default>
+    <route id="shopimind.config" path="/shopimind/config" methods="post">
+        <default key="_controller">Shopimind\Controller\SpmConfigController::handleRequest</default>
     </route>
 
-    <route id="shopimind.sync.customers-groups" path="/shopimind/sync-customers-groups" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomersGroups::syncCustomersGroups</default>
-    </route>
-
-    <route id="shopimind.sync.customers-addresses" path="/shopimind/sync-customers-addresses" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncCustomersAddresses::syncCustomersAddresses</default>
-    </route>
-
-    <route id="shopimind.sync.newsletter-subscribers" path="/shopimind/sync-newsletter-subscribers" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncNewsletterSubscribers::syncNewsletterSubscribers</default>
-    </route>
-
-    <route id="shopimind.sync.orders" path="/shopimind/sync-orders" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncOrders::syncOrders</default>
-    </route>
-
-    <route id="shopimind.sync.order-status" path="/shopimind/sync-orders-statuses" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncOrderStatus::syncOrderStatus</default>
-    </route>
-
-    <route id="shopimind.sync.products" path="/shopimind/sync-products" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncProducts::syncProducts</default>
-    </route>
-
-    <route id="shopimind.sync.products-categories" path="/shopimind/sync-products-categories" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsCategories::syncProductsCategories</default>
-    </route>
-    
-    <route id="shopimind.sync.products-images" path="/shopimind/sync-products-images" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsImages::syncProductsImages</default>
-    </route>
-
-    <route id="shopimind.sync.products-variations" path="/shopimind/sync-products-variations" methods="post"> 
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsVariations::syncProductsVariations</default>
-    </route>
-
-    <route id="shopimind.sync.products-manufacturers" path="/shopimind/sync-products-manufacturers" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncProductsManufacturers::syncProductsManufacturers</default>
-    </route>
-
-    <route id="shopimind.sync.vouchers" path="/shopimind/sync-vouchers" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncVouchers::syncVouchers</default>
-    </route>
-    
-    <!-- sync-status -->
-    <route id="shopimind.sync.status" path="/shopimind/sync-status" methods="get">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::getSyncStatus</default>
-    </route>
-
-    <route id="shopimind.sync.status.post" path="/shopimind/sync-status" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::updateSyncStatus</default>
-    </route>
-
-    <route id="shopimind.sync.object-status.fail.post" path="/shopimind/sync-object-status/fail" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::setObjectSyncStatusToFailed</default>
-    </route>
-
-    <route id="shopimind.sync.reset-running-status.post" path="/shopimind/sync-reset-running-status" methods="post">
-        <default key="_controller">Shopimind\PassiveSynchronization\SyncStatus::resetRunningStatus</default>
-    </route>    
-
-    <!-- sync-errors -->
-    <route id="shopimind.sync.errors.csv" path="/shopimind/sync-errors/csv" methods="get">
-        <default key="_controller">Shopimind\SyncErrors\SyncErrors::downloadMultipleSyncErrorsCsv</default>
+    <route id="shopimind.logs" path="/shopimind/logs" methods="post">
+        <default key="_controller">Shopimind\Controller\SpmLogsController::handleRequest</default>
     </route>
 </routes>

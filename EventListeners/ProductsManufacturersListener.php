@@ -39,7 +39,7 @@ class ProductsManufacturersListener
         
         $data[] = ProductsManufacturersData::formatProductmanufacturer( $brand );
         
-        $response = SpmProductsManufacturers::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmProductsManufacturers::bulkSave( Utils::getAuth(), $data );
         
         Utils::handleResponse( $response );
 

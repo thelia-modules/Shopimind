@@ -68,11 +68,11 @@ class ProductsVariationsListener
             $dataProduct[] = ProductsData::formatProduct( $product, $productTranslated, $productDefault, $dispatcher );
         }
 
-        $response = SpmProductsVariations::bulkUpdate( Utils::getAuth(), $productSaleElements->getProductId(), $dataProductSaleElement );
+        $response = SpmProductsVariations::bulkSave( Utils::getAuth(), $productSaleElements->getProductId(), $dataProductSaleElement );
         Utils::handleResponse( $response );
         Utils::log( 'ProductsVariations', 'Update', json_encode( $response ), $productSaleElements->getId() );
 
-        $response = SpmProducts::bulkUpdate( Utils::getAuth(), $dataProduct );
+        $response = SpmProducts::bulkSave( Utils::getAuth(), $dataProduct );
         Utils::handleResponse( $response );
         Utils::log( 'Products', 'Update', json_encode( $response ), $product->getId() );
     }

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../vendor-module/autoload.php';
 use Thelia\Model\Event\OrderCouponEvent;
 use Shopimind\lib\Utils;
 use Shopimind\SdkShopimind\SpmOrders;
+use Shopimind\Data\OrdersData;
 
 class OrderCouponListener
 {
@@ -17,16 +18,17 @@ class OrderCouponListener
     public static function postOrderCouponInsert(OrderCouponEvent $event): void
     {
         $orderCoupon = $event->getModel();
+        $order = $orderCoupon->getOrder();
+        if ( empty( $order ) ) {
+            return;
+        }
 
-        $spmOrder = new SpmOrders( Utils::getAuth() );
+        // Commande complète, comme OrderListener : l'objet partiel envoyé jusqu'ici (order_id, lang,
+        // voucher_*, updated_at) était refusé par ShopiMind sur /orders, qui exige customer,
+        // products, montants et dates.
+        $data = [ OrdersData::formatOrder( $order ) ];
 
-        $spmOrder->order_id = strval( $orderCoupon->getOrderId() );
-        $spmOrder->lang = $orderCoupon->getOrder()->getLang()->getCode();
-        $spmOrder->voucher_used = $orderCoupon->getCode();
-        $spmOrder->voucher_value = strval( Utils::formatNumber( $orderCoupon->getAmount() ) );
-        $spmOrder->updated_at = $orderCoupon->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z');
-
-        $response = $spmOrder->update();
+        $response = SpmOrders::bulkSave( Utils::getAuth(), $data );
 
         Utils::handleResponse( $response );
 
