@@ -117,6 +117,11 @@ class SpmCustomersAddresses
         return self::processBulkSave( $auth, $endpoint, $data );
     }
 
+    public static function bulkSaveAll( $auth, $data )
+    {
+        return self::processBulkSave( $auth, 'customers/addresses/bulk', $data );
+    }
+
     public function update()
     {
         $data = [

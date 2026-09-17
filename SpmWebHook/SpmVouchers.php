@@ -26,17 +26,31 @@ class SpmVouchers
      */
     public static function createVoucher( Request $request )
     {
-        $requestValidation = Utils::validateSpmRequest( $request );
-        if ( !empty( $requestValidation ) ) return $requestValidation;
+        // Appel signé de ShopiMind : corps et signature contrôlés avant tout traitement (réponse JSON 401 sinon).
+        $body = Utils::getSpmRequestBody( $request );
+        if ( null !== $unauthorized = Utils::authorizeSpmRequest( $request, $body ) ) {
+            return $unauthorized;
+        }
 
+        try {
+            return self::processVoucher( $body );
+        } catch ( \Throwable $th ) {
+            return Utils::spmErrorResponse( 'Webhook', 'Voucher', $th );
+        }
+    }
+
+    /**
+     * @param array $body corps authentifié
+     * @return JsonResponse
+     */
+    protected static function processVoucher( array $body )
+    {
         $config = ShopimindQuery::create()->findOne();
-        $content = $request->getContent();
-        parse_str($content, $body);
 
         $defaultCurrency = CurrencyQuery::create()->findOneByByDefault(true)->getCode();
         $defaultLocal = LangQuery::create()->findOneByByDefault(true)->getLocale();
 
-        $emails = ( array_key_exists('voucherEmails', $body) ) ? $body['voucherEmails'] : '';
+        $emails = ( isset( $body['voucherEmails'] ) && is_array( $body['voucherEmails'] ) ) ? array_values( array_filter( $body['voucherEmails'], 'is_array' ) ) : [];
         $voucherInfos = ( array_key_exists('voucherInfos', $body) ) ? $body['voucherInfos'] : '';
 
         $errors = self::validate( $voucherInfos );
@@ -45,8 +59,10 @@ class SpmVouchers
         }
         
         $type = $voucherInfos['type'];
-        $amount = $voucherInfos['amount'];
-        $currency = ( array_key_exists('amountCurrency', $voucherInfos ) ) ? $voucherInfos['amountCurrency'] : '';
+        // amount est absent pour les types shipping et duplicateCode.
+        $amount = $voucherInfos['amount'] ?? 0;
+        // ShopiMind envoie amount_currency ; amountCurrency reste lu en priorité.
+        $currency = $voucherInfos['amountCurrency'] ?? ( $voucherInfos['amount_currency'] ?? '' );
         $minimumOrder = ( array_key_exists('minimumOrder', $voucherInfos ) ) ? $voucherInfos['minimumOrder'] : '';
         $nbDayValidate = $voucherInfos['nbDayValidate'];
         $code = $voucherInfos['codeToGenerate'];
@@ -187,13 +203,14 @@ class SpmVouchers
         $coupon->setIsEnabled( 1 );
         $coupon->setStartDate( $startDate );
         $coupon->setExpirationDate( $expirationDate );
+        $coupon->setMaxUsage( 1 );
         $coupon->setIsCumulative( $isCumulative );
         $coupon->setIsRemovingPostage( $isRemovingPostage ); 
         $coupon->setIsAvailableOnSpecialOffers( 0 );
         $coupon->setIsUsed( 0 );
         $coupon->setSerializedConditions( base64_encode( json_encode( $condition ) ) );
-        // voucher can be used once
-        $coupon->setMaxUsage( 1 );
+        // Un seul usage au total : avec un compteur par client, chaque client
+        // pouvait utiliser le code une fois. La restriction au client passe par la condition for_some_customers.
         $coupon->setPerCustomerUsageCount( 0 );
         $coupon->setCreatedAt( new \DateTime() );
         $coupon->setUpdatedAt( new \DateTime() );
@@ -225,11 +242,19 @@ class SpmVouchers
 
         if ( !empty( $emails ) ) {
             foreach ($emails as $value) {
+                if ( !isset( $value['email'] ) || !is_scalar( $value['email'] ) ) {
+                    continue;
+                }
                 $vouchersToReturn[$value['email']] = array(
                     'voucher_number' => $code,
                     'voucher_date_limit' => $expirationDate,
                 );
             }
+        } else {
+            $vouchersToReturn = array(
+                'voucher_number' => $code,
+                'voucher_date_limit' => $expirationDate,
+            );
         }
 
         return new JsonResponse([
@@ -243,35 +268,42 @@ class SpmVouchers
      *
      * @param array $params An array containing the coupon creation parameters.
      */
-    public static function validate( $params ) 
+    public static function validate( $params )
     {
         $message = "";
 
-        $requiredParams = [
-            'type',
-            'amount',
-            'nbDayValidate',
-            'codeToGenerate'
-        ];
-
         if ( is_array( $params ) ) {
+            $type = isset( $params['type'] ) ? (string) $params['type'] : '';
+
+            // Champs requis selon le type : ShopiMind n'envoie pas amount pour les bons « livraison
+            // offerte » (shipping) ni pour les codes dupliqués.
+            $requiredParams = [ 'type', 'codeToGenerate' ];
+            if ( $type === 'duplicateCode' ) {
+                $requiredParams[] = 'duplicateCode';
+            } elseif ( $type !== 'shipping' ) {
+                $requiredParams[] = 'amount';
+            }
+
             foreach ( $requiredParams as $param ) {
                 if ( empty( $params[$param] ) ) {
                     $message = $param . ' is required.';
                 }
             }
-        }else {
+
+            // nbDayValidate vaut 0 le dernier jour de validité (ShopiMind ne refuse que les valeurs
+            // négatives) : empty() rejetait ce cas.
+            if ( !isset( $params['nbDayValidate'] ) || !is_numeric( $params['nbDayValidate'] ) || (int) $params['nbDayValidate'] < 0 ) {
+                $message = 'nbDayValidate is required.';
+            }
+        } else {
             $message = 'voucherInfos must be of type array';
         }
-        
 
         if ( !empty( $message ) ) {
-            $response = new JsonResponse([
+            return new JsonResponse([
                 'success' => false,
                 'message' => $message,
             ]);
-    
-            return $response;
         }
     }
 

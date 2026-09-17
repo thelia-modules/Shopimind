@@ -6,224 +6,154 @@ require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 
 use Thelia\Model\ProductImageQuery;
 use Shopimind\lib\Utils;
+use Shopimind\lib\SyncHttpClient;
 use Shopimind\SdkShopimind\SpmProductsImages;
 use Shopimind\Data\ProductImagesData;
 use Thelia\Model\Base\LangQuery;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Shopimind\Model\ShopimindSyncStatus;
-use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsImages extends AbstractController
 {
     /**
      * Process synchronization for products images
      *
-     * @param $lastUpdate
-     * @param $ids
-     * @param $idShopAskSyncs
+     * @param array $param
+     * @param EventDispatcherInterface $dispatcher
      * @return array
      */
-    public static function processSyncProductsImages( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
-    {
-        $productsImagesIds = null;
-        if ( !empty( $ids ) ) {
-            $productsImagesIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-        }
-
-        if ( empty( $lastUpdate ) ) {
-            if ( empty( $productsImagesIds ) ) {
-                $count = ProductImageQuery::create()->find()->count();
-            }else {
-                $count = ProductImageQuery::create()->filterById( $productsImagesIds )->find()->count();
-            }
-        } else {
-            if ( empty( $productsImagesIds ) ) {
-                $count = ProductImageQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }else {
-                $count = ProductImageQuery::create()->filterById( $productsImagesIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }
-        }
-
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $count = $count * $langs->count();
-
-        if ( !empty( $idShopAskSyncs ) ) {
-            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_images' );
-            
-            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_images' );
-            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
-            if( $oldCount > 0 ){
-                $count = $oldCount;
-            }
-
-            $objectStatus = [
-                "status" => "in_progress",
-                "total_objects_count" => $count,
-            ];
-            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
-        }
-
-        if ( $count == 0 ) {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
-            }
-            
-            return [
-                'success' => true,
-                'count' => 0,
-            ];
-        }
-
-        $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
-        if (
-            $synchronizationStatus &&
-            isset($synchronizationStatus['synchronization_status']['products_images'])
-            && $synchronizationStatus['synchronization_status']['products_images'] == 1
-            ) {
-            return [
-                'success' => false,
-                'message' => 'A previous process is still running.',
-            ];
-        }
-
-        Utils::updateSynchronizationStatus( 'products_images', 1 );
-
-        Utils::launchSynchronisation( 'products-images', $lastUpdate, $productsImagesIds, $requestedBy, $idShopAskSyncs );
-
-        return [
-            'success' => true,
-            'count' => $count,
-        ];
-    }
-
-    /**
-     * Synchronizes products images.
-     *
-     * @return void
-     */
-    public static function syncProductsImages( Request $request, EventDispatcherInterface $dispatcher ) 
+    public static function processSyncProductsImages( array $param, EventDispatcherInterface $dispatcher = null ): array
     {
         try {
-            $body =  json_decode( $request->getContent(), true );
-
-            $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
-
-            $productsImagesIds = null;
-            $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
-            if ( !empty( $ids ) ) {
-                $productsImagesIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-            }
-
-            $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
-
-            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
-
             $langs = LangQuery::create()->filterByActive( 1 )->find();
+            $langsCount = $langs->count();
 
-            $offset = 0;
-            $limit = intdiv( 20, $langs->count() );
+            $offset = isset( $param['start'] ) ? (int) $param['start'] : 0;
+            $limit = isset( $param['limit'] ) ? (int) $param['limit'] : 20;
+            $apiMaxObjects = 20;
+            $idsRequested = ( array_key_exists( 'ids', $param ) ) ? $param['ids'] : '';
+            $lastUpdate = ( array_key_exists( 'lastUpdate', $param ) ) ? $param['lastUpdate'] : '';
+
+            $extraHeaders = [];
+            if (!empty($param['id_shop_ask_syncs'])) {
+                $extraHeaders['X-Shopimind-Sync-Id'] = $param['id_shop_ask_syncs'];
+            }
 
             $hasMore = true;
 
-            do {
-                if ( empty( $lastUpdate ) ) {
-                    if ( empty( $productsImagesIds ) ) {
-                        $productImages = ProductImageQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->find();
-                    }else {
-                        $productImages = ProductImageQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsImagesIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->find();
-                    }
-                } else {
-                    $lastUpdate = trim( $lastUpdate, '"\'');
-                    if ( empty( $productsImagesIds ) ) {
-                        $productImages = ProductImageQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }else {
-                        $productImages = ProductImageQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsImagesIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }
-                }
-        
-                if ( $productImages->count() < $limit ) {
-                    $hasMore = false;
-                } else {
-                    $offset += $limit;    
-                }
-                
-                if ( $productImages->count() > 0 ) {
-                    $data = [];
-                    foreach ( $productImages as $productImage ) {
-                        $productId = $productImage->getProductId();
-                        foreach ( $langs as $lang ) {
-                            $data[ $productId ][] = ProductImagesData::formatProductImage( $productImage, $lang, $dispatcher, 'update' );
-                        }
-                    }
-        
-                    foreach ( $data as $productId => $value ) {
-                        $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
-                        $response = SpmProductsImages::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
-                    
-                        if ( !empty( $idShopAskSyncs ) ) {
-                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_images', $response, count( $value ) );
+            $query = ProductImageQuery::create();
 
-                            $lastObject = end( $value );
-                            $lastObjectUpdate = $lastObject['updated_at'];
-                            $objectStatus = [
-                                "last_object_update" => $lastObjectUpdate,
-                            ];
-                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );  
-                            
-                            $errorData = $value;
-                            foreach ($errorData as &$item) {
-                                $item['product_id'] = $productId;
-                            }
-                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_images', $response, $errorData );
-                        }
-
-                        Utils::handleResponse( $response );
-        
-                        Utils::log( 'productImage' , 'passive synchronization', json_encode( $response ) );
-                    }
-                }
-            } while ( $hasMore );
-        
-        } catch (\Throwable $th) {
-            Utils::log( 'productImage' , 'passive synchronization', $th->getMessage() );
-        }  finally {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_images', $objectStatus );
+            if ( !empty( $lastUpdate ) && $lastUpdate !== 'null' ) {
+                $lastUpdate = trim( $lastUpdate, '"\'' );
+                $query->filterByUpdatedAt( $lastUpdate, '>=' );
             }
 
-            Utils::log( 'productImage', 'passive synchronization', 'finally', null);
-            Utils::updateSynchronizationStatus( 'products_images', 0 );
+            if ( !empty( $idsRequested ) ) {
+                $idsRequested = is_array( $idsRequested ) ? $idsRequested : explode( ',', (string) $idsRequested );
+                $query->filterById( $idsRequested );
+            }
+
+            if ( isset( $param['just_count'] ) && $param['just_count'] ) {
+                $count = $query->count();
+
+                return [
+                    'success' => true,
+                    'total_count' => (int) $count * $langsCount
+                ];
+            }
+
+            $query->orderByUpdatedAt();
+            $query->orderBy( 'product_id' );
+            // Tri total (updated_at, product_id, id) : sans id, les images d'un même produit au même updated_at peuvent changer d'ordre d'une page à l'autre.
+            $query->orderById();
+            $query->offset( $offset );
+            $query->limit( $limit );
+
+            $productImages = $query->find();
+
+            if ( $productImages->count() < $limit ) {
+                $hasMore = false;
+            }
+
+            if ( $productImages->count() > 0 ) {
+                $sentCount = 0;
+                $failedCount = 0;
+                $rejectedCount = 0;
+                $errors = [];
+
+                $data = [];
+                foreach ( $productImages as $productImage ) {
+                    foreach ( $langs as $lang ) {
+                        $formattedImage = ProductImagesData::formatProductImage( $productImage, $lang, $dispatcher, 'update' );
+                        $formattedImage['product_id'] = strval( $productImage->getProductId() );
+                        $data[] = $formattedImage;
+                    }
+                }
+
+                $lastObjectUpdate = null;
+                foreach ($data as $item) {
+                    $dateUpd = $item['updated_at'] ?? $item['date_upd'] ?? null;
+                    if ($dateUpd !== null && ($lastObjectUpdate === null || $dateUpd > $lastObjectUpdate)) {
+                        $lastObjectUpdate = $dateUpd;
+                    }
+                }
+
+                $chunks = array_chunk($data, $apiMaxObjects);
+                foreach ($chunks as $chunk) {
+                    $response = SyncHttpClient::executeWithRetry(
+                        function() use ($chunk, $extraHeaders) {
+                            return SpmProductsImages::bulkSaveAll(Utils::getAuth($extraHeaders), $chunk);
+                        },
+                        'SyncProductsImages (bulk ' . count($chunk) . ' images)'
+                    );
+
+                    Utils::log( 'productImage', 'passive synchronization', json_encode( $response ) );
+
+                    $success = isset( $response['statusCode'] ) && $response['statusCode'] === 200;
+
+                    if ($success) {
+                        $counters = SyncHttpClient::extractCounters($response, count($chunk));
+                        $sentCount += $counters['sent_count'];
+                        $rejectedCount += $counters['rejected_count'];
+                    } else {
+                        $failedCount += count($chunk);
+                        $errors[] = [
+                            'message' => $response['message'] ?? 'Unknown error',
+                            'status_code' => $response['statusCode'] ?? 0
+                        ];
+                    }
+                }
+
+                return [
+                    'success' => $failedCount === 0,
+                    'sent_count' => $sentCount,
+                    'failed_count' => $failedCount,
+                    'rejected_count' => $rejectedCount,
+                    'has_more' => $hasMore,
+                    'last_object_update' => $lastObjectUpdate,
+                    'errors' => $errors
+                ];
+            } else {
+                return [
+                    'success' => true,
+                    'sent_count' => 0,
+                    'failed_count' => 0,
+                    'rejected_count' => 0,
+                    'has_more' => false,
+                    'last_object_update' => null
+                ];
+            }
+        } catch ( \Throwable $th ) {
+            Utils::logException( 'Passive', 'productImage', $th );
+            return [
+                'success' => false,
+                'sent_count' => 0,
+                'failed_count' => 0,
+                'rejected_count' => 0,
+                'has_more' => false,
+                'last_object_update' => null,
+                'errors' => [ [ 'message' => Utils::toUtf8( $th->getMessage() ), 'status_code' => 0 ] ]
+            ];
         }
     }
 }

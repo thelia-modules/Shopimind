@@ -18,7 +18,7 @@ use Shopimind\Data\ProductImagesData;
 class ProductsData
 {
     /**
-     * Formats the product data to match the Shopimind format.
+     * Formats the product data to match the ShopiMind format.
      *
      * @param Product $product
      * @param ProductI18n $productTranslated
@@ -37,7 +37,15 @@ class ProductsData
             $active = false;
         }
 
-        return [
+        // Prix TTC arrondis, et price_discount égal à price pour un produit sans promotion.
+        // getPromoPrice() renvoie null hors promotion.
+        $price = Utils::formatNumber( (float) $product->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $product->getId() ) ) );
+        $promoPrice = self::getPromoPrice( $product->getId() );
+        $priceDiscount = null !== $promoPrice
+            ? Utils::formatNumber( (float) $product->getTaxedPrice( Country::getDefaultCountry(), $promoPrice ) )
+            : $price;
+
+        $data = [
             "product_id" => intval( $product->getId() ),
             "lang" => substr( $productTranslated->getLocale()  , 0, 2 ),
             "name" => self::getName( $productTranslated, $productDefault ) ?? '',
@@ -49,14 +57,18 @@ class ProductsData
             "category_ids" => self::formatCategoriesIds( $product->getProductCategories() ),
             "manufacturer_id" =>  ( !empty( $product->getBrandId() ) ) ? strval( $product->getBrandId( ) ) : null,
             "currency" => self::getCurrency( $product->getId() ),
-            "image_link" => self::getDefaultImage( $product->getId(), $dispatcher ) ?? "https://placehold.co/300x300",
-            "price" => $product->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $product->getId() ) ),
-            "price_discount" => $product->getTaxedPrice( Country::getDefaultCountry(), self::getPromoPrice( $product->getId() ) ),
-            "quantity_remaining" => $quantity,
+            "image_link" => ProductImagesData::urlOrPlaceholder( self::getDefaultImage( $product->getId(), $dispatcher ) ),
+            "price" => $price,
+            "price_discount" => $priceDiscount,
+            // Entier exigé par ShopiMind : Thelia stocke le stock en FLOAT (vente au poids).
+            "quantity_remaining" => (int) $quantity,
             "is_active" => $active,
-            "created_at" => $product->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            "updated_at" => $product->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z')
+            "created_at" => $product->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+            "updated_at" => $product->getUpdatedAt()->format('Y-m-d\TH:i:s.uP')
         ];
+
+        $data['source_label'] = Utils::getSourceLabel();
+        return $data;
     }
 
     /**
@@ -102,13 +114,18 @@ class ProductsData
      */
     public static function getPromoPrice( int $productId ){
         $productSalesElement = ProductSaleElementsQuery::create()->filterByArray(['productId' => $productId, 'isDefault' => 1])->findOne();
-        if ( !empty($productSalesElement) ) {
+        // Thelia garde promo_price (0 par défaut) quand la promotion est désactivée : seul le drapeau
+        // promo de la déclinaison dit si ce prix s'applique. Sans ce test, price_discount valait 0
+        // pour tous les produits hors promotion.
+        if ( !empty($productSalesElement) && (int) $productSalesElement->getPromo() === 1 ) {
             $productSalesElementId = $productSalesElement->getId();
             $productPromoPrice = ProductPriceQuery::create()->findOneByProductSaleElementsId( $productSalesElementId );
             if ( !empty( $productPromoPrice ) ) {
                 return Utils::formatNumber( $productPromoPrice->getPromoPrice() );
             }
         }
+
+        return null;
     }
 
     /**
@@ -159,6 +176,7 @@ class ProductsData
         $product = ProductQuery::create()->findOneById($productId);
 
         $productEanCode = null;
+        $eanCode = null;
 
         if ($product) {
             $productSaleElement = ProductSaleElementsQuery::create()->filterByArray(['productId' => $productId, 'isDefault' => 1])->findOne();

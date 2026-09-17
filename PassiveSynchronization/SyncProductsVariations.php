@@ -5,228 +5,155 @@ namespace Shopimind\PassiveSynchronization;
 require_once THELIA_MODULE_DIR . '/Shopimind/vendor-module/autoload.php';
 
 use Thelia\Model\ProductSaleElementsQuery;
-use Symfony\Component\HttpFoundation\Request;
 use Shopimind\lib\Utils;
+use Shopimind\lib\SyncHttpClient;
 use Thelia\Model\Base\LangQuery;
 use Shopimind\SdkShopimind\SpmProductsVariations;
 use Shopimind\Data\ProductsVariationsData;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Shopimind\Model\ShopimindSyncStatus;
-use Shopimind\Model\ShopimindSyncErrors;
 
 class SyncProductsVariations extends AbstractController
 {
-
     /**
      * Process synchronization for products variations
      *
-     * @param string $lastUpdate
-     * @param $ids
-     * @param $requestedBy
-     * @param $idShopAskSyncs
+     * @param array $param
+     * @param EventDispatcherInterface $dispatcher
      * @return array
      */
-    public static function processSyncProductsVariations ( $lastUpdate, $ids, $requestedBy, $idShopAskSyncs ): array
-    {
-        $productsVariationsIds = null;
-        if ( !empty( $ids ) ) {
-            $productsVariationsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-        }
-
-        if ( empty( $lastUpdate ) ) {
-            if ( empty( $productsVariationsIds ) ) {
-                $count = ProductSaleElementsQuery::create()->find()->count();
-            }else {
-                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->find()->count();                
-            }
-        } else {
-            if ( empty( $productsVariationsIds ) ) {
-                $count = ProductSaleElementsQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }else {
-                $count = ProductSaleElementsQuery::create()->filterById( $productsVariationsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
-            }
-        }
-
-        $langs = LangQuery::create()->filterByActive( 1 )->find();
-        $count = $count * $langs->count();
-
-        if ( !empty( $idShopAskSyncs ) ) {
-            ShopimindSyncStatus::updateShopimindSyncStatus( $idShopAskSyncs, 'products_variations' );
-            
-            $objectStatus = ShopimindSyncStatus::getObjectStatus( $idShopAskSyncs, 'products_variations' );
-            $oldCount = !empty( $objectStatus ) ? $objectStatus['total_objects_count'] : 0;
-            if( $oldCount > 0 ){
-                $count = $oldCount;
-            }
-
-            $objectStatus = [
-                "status" => "in_progress",
-                "total_objects_count" => $count,
-            ];
-            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
-        }
-
-        if ( $count == 0 ) {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
-            }
-            
-            return [
-                'success' => true,
-                'count' => 0,
-            ];
-        }
-
-        $synchronizationStatus = Utils::loadSynchronizationStatus();
-        
-        if ( 
-            !empty( $synchronizationStatus ) 
-            && isset( $synchronizationStatus['synchronization_status'] ) 
-            && isset( $synchronizationStatus['synchronization_status']['products_variations'] ) 
-            && $synchronizationStatus['synchronization_status']['products_variations'] == 1 
-            ) {
-            return [
-                'success' => false,
-                'message' => 'A previous process is still running.',
-            ];
-        }
-
-        Utils::updateSynchronizationStatus( 'products_variations', 1 );
-
-        Utils::launchSynchronisation( 'products-variations', $lastUpdate, $productsVariationsIds, $requestedBy, $idShopAskSyncs  );
-
-        return [
-            'success' => true,
-            'count' => $count,
-        ]; 
-    }
-  
-    /**
-     * Synchronizes product variations.
-     *
-     * @return void
-     */
-    public static function syncProductsVariations( Request $request, EventDispatcherInterface $dispatcher )
+    public static function processSyncProductsVariations( array $param, EventDispatcherInterface $dispatcher = null ): array
     {
         try {
-            $body =  json_decode( $request->getContent(), true );
-
-            $lastUpdate = ( isset( $body['last_update'] ) ) ? $body['last_update'] : null;
-
-            $productsVariationsIds = null;
-            $ids = ( isset( $body['ids'] ) ) ? $body['ids'] : null;
-            if ( !empty( $ids ) ) {
-                $productsVariationsIds = ( !is_array( $ids ) && $ids > 0 ) ? array( $ids ) : $ids;
-            }
-
-            $requestedBy = ( isset( $body['requestedBy'] ) ) ? $body['requestedBy'] : null;
-
-            $idShopAskSyncs = ( isset( $body['idShopAskSyncs'] ) ) ? $body['idShopAskSyncs'] : null;
-
             $langs = LangQuery::create()->filterByActive( 1 )->find();
+            $langsCount = $langs->count();
 
-            $offset = 0;
-            $limit = intdiv( 20, $langs->count() );
+            $offset = isset( $param['start'] ) ? (int) $param['start'] : 0;
+            $limit = isset( $param['limit'] ) ? (int) $param['limit'] : 20;
+            $apiMaxObjects = 20;
+            $idsRequested = ( array_key_exists( 'ids', $param ) ) ? $param['ids'] : '';
+            $lastUpdate = ( array_key_exists( 'lastUpdate', $param ) ) ? $param['lastUpdate'] : '';
+
+            $extraHeaders = [];
+            if (!empty($param['id_shop_ask_syncs'])) {
+                $extraHeaders['X-Shopimind-Sync-Id'] = $param['id_shop_ask_syncs'];
+            }
 
             $hasMore = true;
 
-            do {
-                if ( empty( $lastUpdate ) ) {
-                    if ( empty( $productsVariationsIds ) ) {
-                        $productsVariations = ProductSaleElementsQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->find();
-                    }else {
-                        $productsVariations = ProductSaleElementsQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsVariationsIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->find();
-                    }
-                } else {
-                    $lastUpdate = trim( $lastUpdate, '"\'');
-                    if ( empty( $productsVariationsIds ) ) {
-                        $productsVariations = ProductSaleElementsQuery::create()
-                            ->orderByUpdatedAt()
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }else {
-                        $productsVariations = ProductSaleElementsQuery::create()
-                            ->orderByUpdatedAt()
-                            ->filterById( $productsVariationsIds )
-                            ->offset( $offset )
-                            ->limit( $limit )
-                            ->orderBy('product_id')
-                            ->filterByUpdatedAt( $lastUpdate, '>=' );
-                    }
-                }
+            $query = ProductSaleElementsQuery::create();
 
-                if ( $productsVariations->count() < $limit ) {
-                    $hasMore = false;
-                } else {
-                    $offset += $limit;    
-                }
-
-                if ( $productsVariations->count() > 0 ) {
-                    $data = [];
-                    foreach ( $productsVariations as $productVariation ) {
-                        $productId = $productVariation->getProductId();
-                        foreach ( $langs as $lang ) {
-                            $data[ $productId ][] = ProductsVariationsData::formatProductVariation( $productVariation, null, $lang->getLocale(), $dispatcher );
-                        }
-                    }
-
-                    foreach ( $data as $productId => $value ) {
-                        $requestHeaders = $requestedBy ? [ 'answered-for' => $requestedBy ] : [];
-                        $response = SpmProductsVariations::bulkSave( Utils::getAuth( $requestHeaders ), $productId, $value );
-                    
-                        if ( !empty( $idShopAskSyncs ) ) {
-                            ShopimindSyncStatus::updateObjectStatusesCount( $idShopAskSyncs, 'products_variations', $response, count( $value ) );
-
-                            $lastObject = end( $value );
-                            $lastObjectUpdate = $lastObject['updated_at'];
-                            $objectStatus = [
-                                "last_object_update" => $lastObjectUpdate,
-                            ];
-                            ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );  
-
-                            $errorData = $value;
-                            foreach ($errorData as &$item) {
-                                $item['product_id'] = $productId;
-                            }
-                            ShopimindSyncErrors::recordSyncError( $idShopAskSyncs, 'products_variations', $response, $errorData );
-                        }
-
-                        Utils::handleResponse( $response );
-
-                        Utils::log( 'productsVariations' , 'passive synchronization', json_encode( $response ) );
-                    }
-                }
-            } while ( $hasMore );
-
-        } catch (\Throwable $th) {
-            Utils::log( 'productsVariations' , 'passive synchronization', $th->getMessage() );
-        }  finally {
-            if ( !empty( $idShopAskSyncs ) ) {
-                $objectStatus = [
-                    "status" => "completed",
-                ];
-                ShopimindSyncStatus::updateObjectStatuses( $idShopAskSyncs, 'products_variations', $objectStatus );
+            if ( !empty( $lastUpdate ) && $lastUpdate !== 'null' ) {
+                $lastUpdate = trim( $lastUpdate, '"\'' );
+                $query->filterByUpdatedAt( $lastUpdate, '>=' );
             }
 
-            Utils::log( 'productsVariations', 'passive synchronization', 'finally', null );
-            Utils::updateSynchronizationStatus( 'products_variations', 0 );
+            if ( !empty( $idsRequested ) ) {
+                $idsRequested = is_array( $idsRequested ) ? $idsRequested : explode( ',', (string) $idsRequested );
+                $query->filterById( $idsRequested );
+            }
+
+            if ( isset( $param['just_count'] ) && $param['just_count'] ) {
+                $count = $query->count();
+
+                return [
+                    'success' => true,
+                    'total_count' => (int) $count * $langsCount
+                ];
+            }
+
+            $query->orderByUpdatedAt();
+            $query->orderBy( 'product_id' );
+            // Tri total (updated_at, product_id, id) : sans id, les déclinaisons d'un même produit au même updated_at peuvent changer d'ordre d'une page à l'autre.
+            $query->orderById();
+            $query->offset( $offset );
+            $query->limit( $limit );
+
+            $productsVariations = $query->find();
+
+            if ( $productsVariations->count() < $limit ) {
+                $hasMore = false;
+            }
+
+            if ( $productsVariations->count() > 0 ) {
+                $sentCount = 0;
+                $failedCount = 0;
+                $rejectedCount = 0;
+                $errors = [];
+
+                $data = [];
+                foreach ( $productsVariations as $productVariation ) {
+                    foreach ( $langs as $lang ) {
+                        $formattedVariation = ProductsVariationsData::formatProductVariation( $productVariation, null, $lang->getLocale(), $dispatcher );
+                        $formattedVariation['product_id'] = strval( $productVariation->getProductId() );
+                        $data[] = $formattedVariation;
+                    }
+                }
+
+                $lastObjectUpdate = null;
+                foreach ($data as $item) {
+                    $dateUpd = $item['updated_at'] ?? $item['date_upd'] ?? null;
+                    if ($dateUpd !== null && ($lastObjectUpdate === null || $dateUpd > $lastObjectUpdate)) {
+                        $lastObjectUpdate = $dateUpd;
+                    }
+                }
+
+                $chunks = array_chunk($data, $apiMaxObjects);
+                foreach ($chunks as $chunk) {
+                    $response = SyncHttpClient::executeWithRetry(
+                        function() use ($chunk, $extraHeaders) {
+                            return SpmProductsVariations::bulkSaveAll(Utils::getAuth($extraHeaders), $chunk);
+                        },
+                        'SyncProductsVariations (bulk ' . count($chunk) . ' variations)'
+                    );
+
+                    Utils::log( 'productsVariations', 'passive synchronization', json_encode( $response ) );
+
+                    $success = isset( $response['statusCode'] ) && $response['statusCode'] === 200;
+
+                    if ($success) {
+                        $counters = SyncHttpClient::extractCounters($response, count($chunk));
+                        $sentCount += $counters['sent_count'];
+                        $rejectedCount += $counters['rejected_count'];
+                    } else {
+                        $failedCount += count($chunk);
+                        $errors[] = [
+                            'message' => $response['message'] ?? 'Unknown error',
+                            'status_code' => $response['statusCode'] ?? 0
+                        ];
+                    }
+                }
+
+                return [
+                    'success' => $failedCount === 0,
+                    'sent_count' => $sentCount,
+                    'failed_count' => $failedCount,
+                    'rejected_count' => $rejectedCount,
+                    'has_more' => $hasMore,
+                    'last_object_update' => $lastObjectUpdate,
+                    'errors' => $errors
+                ];
+            } else {
+                return [
+                    'success' => true,
+                    'sent_count' => 0,
+                    'failed_count' => 0,
+                    'rejected_count' => 0,
+                    'has_more' => false,
+                    'last_object_update' => null
+                ];
+            }
+        } catch ( \Throwable $th ) {
+            Utils::logException( 'Passive', 'productsVariations', $th );
+            return [
+                'success' => false,
+                'sent_count' => 0,
+                'failed_count' => 0,
+                'rejected_count' => 0,
+                'has_more' => false,
+                'last_object_update' => null,
+                'errors' => [ [ 'message' => Utils::toUtf8( $th->getMessage() ), 'status_code' => 0 ] ]
+            ];
         }
     }
 }

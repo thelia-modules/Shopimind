@@ -16,6 +16,7 @@ class SpmShopConnection
             $response = $httpClient->post( $endpoint, [ 'json' => $data ]);
             return json_decode($response->getBody(), true);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
+    
             if ($e->hasResponse()) {
                 $responseBody = (string) $e->getResponse()->getBody();
                 return json_decode($responseBody, true);

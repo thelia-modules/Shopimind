@@ -4,12 +4,12 @@
         xsi:schemaLocation="http://thelia.net/schema/dic/module http://thelia.net/schema/dic/module/module-2_2.xsd">
     <fullnamespace>Shopimind\Shopimind</fullnamespace>
     <descriptive locale="en_US">
-        <title>Shopimind</title>
-        <description>Relaunch your abandoned carts, contact your prospects, build customer loyalty. Shopimind allows you to automate your customer relationships and increase your sales.</description>
+        <title>ShopiMind</title>
+        <description>Relaunch your abandoned carts, contact your prospects, build customer loyalty. ShopiMind allows you to automate your customer relationships and increase your sales.</description>
     </descriptive>
     <descriptive locale="fr_FR">
-        <title>Shopimind</title>
-        <description>Relancer vos paniers abandonnés, contacter vos prospects, fidéliser vos clients. Shopimind vous permet d\'automatiser votre relation client et d\'augmenter votre chiffre d\'affaires.</description>
+        <title>ShopiMind</title>
+        <description>Relancer vos paniers abandonnés, contacter vos prospects, fidéliser vos clients. ShopiMind vous permet d\'automatiser votre relation client et d\'augmenter votre chiffre d\'affaires.</description>
     </descriptive>
     <!-- <logo></logo> -->
     <!--<images-folder>images</images-folder>-->
@@ -17,7 +17,7 @@
         <language>en_US</language>
         <language>fr_FR</language>
     </languages>
-    <version>1.0.5</version>
+    <version>1.1.0</version>
     <authors>
         <author>
             <name></name>

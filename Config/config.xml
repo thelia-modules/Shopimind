@@ -32,8 +32,13 @@
         <hook id="shopimind.hook.config">
             <tag name="hook.event_listener" event="module.configuration" type="back" templates="render:module_configuration.html" />
         </hook>
-        <hook id="shopimind.hook.tagFooter" class="Shopimind\Hook\ShopimindHook">
-            <tag name="hook.event_listener" event="main.content-bottom" method="addScriptTagFooter" type="front"/>
+        <!-- Le tag n'est injecté qu'une fois. Moteur de taxes injecté pour calculer le panier comme le front. -->
+        <hook id="shopimind.hook.tag" class="Shopimind\Hook\ShopimindHook">
+            <call method="setTaxEngine">
+                <argument type="service" id="thelia.taxEngine" on-invalid="null"/>
+            </call>
+            <tag name="hook.event_listener" event="main.head-bottom" method="addScriptTag" type="front"/>
+            <tag name="hook.event_listener" event="main.body-bottom" method="addScriptTag" type="front"/>
         </hook>
     </hooks>
    

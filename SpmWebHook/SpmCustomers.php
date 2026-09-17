@@ -8,6 +8,7 @@ use Thelia\Model\LangQuery;
 use Thelia\Model\Customer;
 use Thelia\Model\CustomerQuery;
 use Thelia\Model\Newsletter;
+use Thelia\Model\NewsletterQuery;
 use Shopimind\lib\Utils;
 
 class SpmCustomers
@@ -20,17 +21,31 @@ class SpmCustomers
      */
     public static function createCustomer(Request $request)
     {
-        $requestValidation = Utils::validateSpmRequest( $request );
-        if ( !empty( $requestValidation ) ) return $requestValidation;
+        // Appel signé de ShopiMind : corps et signature contrôlés avant tout traitement (réponse JSON 401 sinon).
+        $body = Utils::getSpmRequestBody( $request );
+        if ( null !== $unauthorized = Utils::authorizeSpmRequest( $request, $body ) ) {
+            return $unauthorized;
+        }
 
-        $content = $request->getContent();
-        parse_str($content, $body);
+        try {
+            return self::processCustomer( $body );
+        } catch ( \Throwable $th ) {
+            return Utils::spmErrorResponse( 'Webhook', 'Customer', $th );
+        }
+    }
 
+    /**
+     * @param array $body corps authentifié
+     * @return JsonResponse
+     */
+    protected static function processCustomer( array $body )
+    {
         $status = true;
         $message = "Customer created successfully.";
+        $customerId = 0;
         $defaultLang = LangQuery::create()->findOneByByDefault(true)->getId();
 
-        $customerData = $body['customer'];
+        $customerData = ( isset( $body['customer'] ) && is_array( $body['customer'] ) ) ? $body['customer'] : [];
         $errors = self::validate( $customerData );
 
         if ( !empty( $errors ) ) {
@@ -54,7 +69,6 @@ class SpmCustomers
                 $customer = new Customer();
                 $customer->setTitleId(1);
                 $customer->setLangId($langId);
-                $customer->setRef(self::generateRef());
                 $customer->setFirstname($firstName);
                 $customer->setLastname($lastName);
                 $customer->setEmail($email);
@@ -75,50 +89,56 @@ class SpmCustomers
                 $customer->setVersionCreatedBy(NULL);
 
                 $customer->save();
-
-                if ( $newsletter == 1 ) {
-                    $newsletter = new Newsletter();
-                    $newsletter->setEmail( $email );
-                    $newsletter->setFirstname( $firstName );
-                    $newsletter->setLastname( $lastName );
-                    $newsletter->setLocale( $local );
-                    $newsletter->setUnsubscribed( 0 );
-                    $newsletter->setCreatedAt( new \DateTime() );
-                    $newsletter->setUpdatedAt( new \DateTime() );
-
-                    $newsletter->save();
-                }
+                $customerId = (int) $customer->getId();
             } catch (\Throwable $th) {
+                Utils::logException( 'Webhook', 'Customer', $th );
                 $status = false;
-                $message = $th->getMessage();
+                $message = Utils::toUtf8( $th->getMessage() );
+            }
+
+            // Compte créé : un échec de l'inscription à la newsletter est journalisé sans annuler la création.
+            if ( $status && $newsletter == 1 ) {
+                try {
+                    // L'e-mail peut déjà figurer dans la table newsletter (prospect inscrit avant de
+                    // créer son compte) : contrainte UNIQUE, la ligne existante est réactivée.
+                    $subscription = NewsletterQuery::create()->findOneByEmail( $email );
+                    if ( empty( $subscription ) ) {
+                        $subscription = new Newsletter();
+                        $subscription->setEmail( $email );
+                        $subscription->setCreatedAt( new \DateTime() );
+                    }
+                    $subscription->setFirstname( $firstName );
+                    $subscription->setLastname( $lastName );
+                    $subscription->setLocale( $local );
+                    $subscription->setUnsubscribed( 0 );
+                    $subscription->setUpdatedAt( new \DateTime() );
+
+                    $subscription->save();
+                } catch (\Throwable $th) {
+                    Utils::logException( 'Webhook', 'NewsletterSubscriber', $th, $customerId );
+                }
             }
         } else {
             $status = false;
             $message = "Email already exist.";
         }
 
-        $response = new JsonResponse([
+        $response = [
             'success' => $status,
             'message' => $message,
-        ]);
+        ];
 
-        return $response;
-    }
+        // Identifiant du client créé, qui sert de clé au client chez ShopiMind : false si la création échoue, absent
+        // si l'e-mail existe déjà.
+        if ( !$emailExists ) {
+            if ( !$status ) {
+                $response['id_customer'] = false;
+            } elseif ( $customerId > 0 ) {
+                $response['id_customer'] = $customerId;
+            }
+        }
 
-    /**
-     * Generates a unique reference for a customer.
-     *
-     * @return string The generated reference.
-     */
-    public static function generateRef()
-    {
-        $lastId = CustomerQuery::create()->orderByRef(\Propel\Runtime\ActiveQuery\Criteria::DESC)->findOne();
-        $lastIdNumber = $lastId ? (int)substr($lastId->getRef(), 3) : 0;
-
-        $newIdNumber = $lastIdNumber + 1;
-        $newRef = 'CUS' . str_pad($newIdNumber, 12, '0', STR_PAD_LEFT);
-
-        return $newRef;
+        return new JsonResponse( $response );
     }
 
     /**

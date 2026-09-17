@@ -60,7 +60,7 @@ class ProductsCategoriesListener
             $data[] = ProductsCategoriesData::formatProductCategory( $category, $categoryTranslated, $categoryDefault );
         }
         
-        $response = SpmProductsCategories::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmProductsCategories::bulkSave( Utils::getAuth(), $data );
 
         Utils::handleResponse( $response );
 

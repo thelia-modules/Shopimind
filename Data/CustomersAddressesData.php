@@ -4,17 +4,19 @@ namespace Shopimind\Data;
 
 use Thelia\Model\Address;
 use Thelia\Model\CountryQuery;
+use Shopimind\lib\Utils;
 
 class CustomersAddressesData
 {
     /**
-     * Formats the customer address data to match the Shopimind format.
+     * Formats the customer address data to match the ShopiMind format.
      *  
      * @param Address $address
      */
     public static function formatCustomerAddress( Address $address ){
         $country = CountryQuery::create()->findOneById( $address->getCountryId() );
-        $countryCode = !empty( $country ) ? $country->getIsoalpha2() : '';
+        $countryIso = !empty( $country ) ? strtoupper( $country->getIsoalpha2() ) : null;
+
         $data = [
             "address_id" => intval( $address->getId() ),
             "first_name" => $address->getFirstname() ?? '',
@@ -24,14 +26,16 @@ class CustomersAddressesData
             "company" => $address->getCompany() ?? null,
             "address_line_1" => $address->getAddress1() ?? '',
             "address_line_2" => $address->getAddress2() ?? '',
-            "postal_code" => $address->getZipcode() ?? '',
+            // Seuls lettres, chiffres, espaces et tirets sont acceptés par ShopiMind (/^[\w\s\-]+$/).
+            "postal_code" => Utils::sanitizePostalCode( $address->getZipcode() ),
             "city" => $address->getCity() ?? '',
-            "country" => $countryCode,
+            "country" => $countryIso,
             "is_active" => true,
-            "created_at" => $address->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            'updated_at' => $address->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
+            "created_at" => $address->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+            'updated_at' => $address->getUpdatedAt()->format('Y-m-d\TH:i:s.uP'),
         ];
 
+        $data['source_label'] = Utils::getSourceLabel();
         return $data;
     }
 }

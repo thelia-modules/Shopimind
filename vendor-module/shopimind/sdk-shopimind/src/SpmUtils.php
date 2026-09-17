@@ -1,31 +1,36 @@
 <?php
 namespace Shopimind\SdkShopimind;
 
-use GuzzleHttp\Client as GuzzleClient;
+use Shopimind\SdkShopimind\Http\Client as HttpClient;
 
 class SpmUtils
 {
     /**
-     * @param $apiVersion
-     * @param $apiKey
-     * @param array $headers
-     * @return GuzzleClient
+     * @param string $apiVersion
+     * @param string $apiKey
+     * @param array  $headers
+     * @return HttpClient
      */
-    public static function getClient( $apiVersion, $apiKey, array $headers = [] ): GuzzleClient
+    public static function getClient($apiVersion, $apiKey, $headers = array())
     {
-        $defaultHeaders = [
-            'Accept' => 'application/json',
+        $defaultHeaders = array(
+            'Accept'       => 'application/json',
             'Content-Type' => 'application/json',
-            'spm-api-key' => $apiKey,
-            'client-version' => '4.0.0',
-            'current-build' => 1,
-        ];
-        $baseUrl = 'https://api.shopimind.com';
+            'spm-api-key'  => $apiKey,
+        );
+
+        // Allow caller (e.g. PS debug override) to redirect SDK traffic by
+        // exporting SHOPIMIND_CORE_API_BASE in the environment before this
+        // call. Falls back to production URL otherwise.
+        $envOverride = getenv('SHOPIMIND_CORE_API_BASE');
+        $baseUrl = ($envOverride !== false && $envOverride !== '') ? $envOverride : 'https://core.shopimind.com';
         $baseUrl = rtrim($baseUrl, '/') . '/' . $apiVersion . '/';
 
-        return new GuzzleClient([
+        $mergedHeaders = array_merge($defaultHeaders, $headers);
+
+        return new HttpClient(array(
             'base_uri' => $baseUrl,
-            'headers' => array_merge( $defaultHeaders, $headers ),
-        ]);
+            'headers'  => $mergedHeaders,
+        ));
     }
 }

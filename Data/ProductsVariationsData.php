@@ -7,10 +7,7 @@ use Thelia\Model\ProductPriceQuery;
 use Shopimind\lib\Utils;
 use Thelia\Model\ProductSaleElements;
 use Thelia\Model\Base\LangQuery;
-use Thelia\Model\ConfigQuery;
 use Thelia\Model\ProductImageQuery;
-use Thelia\Core\Event\Image\ImageEvent;
-use Thelia\Core\Event\TheliaEvents;
 use Thelia\Model\Base\ProductSaleElementsProductImageQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Thelia\Model\Country;
@@ -19,7 +16,7 @@ use Thelia\Model\Country;
 class ProductsVariationsData
 {
     /**
-     * Formats the product variation data to match the Shopimind format.
+     * Formats the product variation data to match the ShopiMind format.
      *
      * @param ProductSaleElements $productVariation
      * @param null $defaultTitle
@@ -46,21 +43,38 @@ class ProductsVariationsData
             $productVariationTitle = $defaultTitle;
         }
 
-        return [
+        // Prix promo seulement si la promotion est active sur la déclinaison (drapeau promo) :
+        // promo_price reste renseigné, à 0 par défaut, quand elle ne l'est pas.
+        $promoPrice = (int) $productVariation->getPromo() === 1 ? self::getPromoPrice( $productVariation->getId() ) : null;
+        // Prix TTC arrondis, et price_discount renseigné seulement quand il est inférieur à price,
+        // null sinon.
+        $price = Utils::formatNumber( (float) $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $productVariation->getId() ) ) );
+        $priceDiscount = null !== $promoPrice
+            ? Utils::formatNumber( (float) $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), $promoPrice ) )
+            : null;
+        if ( null !== $priceDiscount && $priceDiscount >= $price ) {
+            $priceDiscount = null;
+        }
+
+        $data = [
             "variation_id" => intval( $productVariation->getId() ),
             "lang" => substr( $locale , 0, 2 ),
             "name" =>  $productVariationTitle ? $productVariationTitle : $defaultProductTitle,
             "reference" => $productVariation->getRef(),
             "ean13" => ( !empty( $productVariation->getEanCode() ) ) ? $productVariation->getEanCode() : null,
             "link" => $productVariation->getProduct()->getUrl( $locale ),
-            "image_link" => self::getDefaultImage( $productVariation->getId(), $productVariation->getProduct()->getId(), $dispatcher )  ?? "https://placehold.co/300x300",
-            "price" => $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), self::getPrice( $productVariation->getId() ) ),
-            "price_discount" => $productVariation->getProduct()->getTaxedPrice( Country::getDefaultCountry(), self::getPromoPrice( $productVariation->getId() ) ),
-            "quantity_remaining" => $productVariation->getQuantity() ?? 0,
+            "image_link" => ProductImagesData::urlOrPlaceholder( self::getDefaultImage( $productVariation->getId(), $productVariation->getProduct()->getId(), $dispatcher ) ),
+            "price" => $price,
+            "price_discount" => $priceDiscount,
+            // Entier exigé par ShopiMind : Thelia stocke le stock en FLOAT (vente au poids).
+            "quantity_remaining" => (int) ( $productVariation->getQuantity() ?? 0 ),
             "is_default" => ( bool ) $productVariation->getIsDefault(),
-            "created_at" => $productVariation->getCreatedAt()->format('Y-m-d\TH:i:s.u\Z'),
-            "updated_at" => $productVariation->getUpdatedAt()->format('Y-m-d\TH:i:s.u\Z'),
+            "created_at" => $productVariation->getCreatedAt()->format('Y-m-d\TH:i:s.uP'),
+            "updated_at" => $productVariation->getUpdatedAt()->format('Y-m-d\TH:i:s.uP'),
         ];
+
+        $data['source_label'] = Utils::getSourceLabel();
+        return $data;
     }
 
     /**
@@ -107,84 +121,34 @@ class ProductsVariationsData
     }  
 
     /**
-    * Retrieves default images of productVariation
-    *
-    * @param int $productSaleElementId
-    * @param int $productId
-    * @param EventDispatcherInterface $dispatcher
-    * 
-    */
-   public static function getDefaultImage( int $productSaleElementId, int $idProduct, EventDispatcherInterface $dispatcher ){
-        $productSaleElementsProductImage = ProductSaleElementsProductImageQuery::create()
+     * Image de la déclinaison : la première des images qui lui sont associées, sinon la première image visible du produit.
+     *
+     * @param int $productSaleElementId
+     * @param int $idProduct
+     * @param EventDispatcherInterface $dispatcher
+     * @return string|null
+     */
+    public static function getDefaultImage( int $productSaleElementId, int $idProduct, EventDispatcherInterface $dispatcher ){
+        $imageIds = [];
+        $associations = ProductSaleElementsProductImageQuery::create()
             ->filterByProductSaleElementsId( $productSaleElementId )
-            ->findOne();
+            ->find();
+        foreach ( $associations as $association ) {
+            $imageIds[] = (int) $association->getProductImageId();
+        }
 
-        $idParam = !empty( $productSaleElementsProductImage ) ? $productSaleElementsProductImage->getProductSaleElementsId() : $idProduct; 
+        $image = !empty( $imageIds )
+            ? ProductImageQuery::create()->filterById( $imageIds )->orderByPosition()->findOne()
+            : null;
 
-        $defaultImage = ProductImageQuery::create()
-                ->filterByProductId( $idParam )
-                ->filterByPosition(1)
+        if ( empty( $image ) ) {
+            $image = ProductImageQuery::create()
+                ->filterByProductId( $idProduct )
+                ->filterByVisible( 1 )
+                ->orderByPosition()
                 ->findOne();
-    
-            if ( !empty( $defaultImage ) ) {
-                try {
-                    $imagePath = ConfigQuery::read('images_library_path') . DIRECTORY_SEPARATOR . $defaultImage->getFile();
-        
-                    $imgSourcePath = $imagePath;
-                
-                    $productImageEvent = new ImageEvent();
-                    $productImageEvent->setSourceFilepath($imgSourcePath)->setCacheSubdirectory('product');
-            
-                    $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
-                    $url = $productImageEvent->getFileUrl();
-            
-                    return $url;    
-                } catch (\Throwable $th) {
-                    //throw $th;
-                }
+        }
 
-                try {
-                    $cacheDirFromWebRoot = ConfigQuery::read('image_cache_dir_from_web_root', 'cache/images/');
-                    $cacheSubdirectory = '/product/';
-                    $cacheDirectory = THELIA_ROOT . 'web/' . $cacheDirFromWebRoot . $cacheSubdirectory;
-                    $pattern = $cacheDirectory . '*-' . strtolower($defaultImage->getFile());
-                    $cachedFiles = glob($pattern);
-                    if (!empty($cachedFiles)) {
-                        $largestFile = null;
-                        $largestSize = 0;
-    
-                        foreach ($cachedFiles as $file) {
-                            if (file_exists($file)) {
-                                $size = filesize($file);
-                                if ($size > $largestSize) {
-                                    $largestSize = $size;
-                                    $largestFile = $file;
-                                }
-                            }
-                        }
-    
-                        $fileName = basename($largestFile);
-                        $sourceFilePath = sprintf(
-                            "%s%s/%s/%s",
-                            THELIA_ROOT,
-                            ConfigQuery::read('image_cache_dir_from_web_root'),
-                            "product",
-                            $fileName
-                        );
-                    
-                        $productImageEvent = new ImageEvent();
-                        $productImageEvent->setSourceFilepath($sourceFilePath)->setCacheSubdirectory('product');
-                        
-                        $dispatcher->dispatch($productImageEvent, TheliaEvents::IMAGE_PROCESS);
-                        $url = $productImageEvent->getFileUrl();
-    
-                        return $url;
-                    }
-                } catch (\Throwable $th) {
-                    //throw $th;
-                }
-            }
-
-        return null;
-   }
+        return !empty( $image ) ? ProductImagesData::getImageUrl( $image, $dispatcher ) : null;
+    }
 }

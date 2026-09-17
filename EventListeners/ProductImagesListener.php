@@ -49,7 +49,7 @@ class ProductImagesListener
             $data[] = ProductImagesData::formatProductImage( $image, $lang, $dispatcher, 'update' );
         }
 
-        $response = SpmProductsImages::bulkUpdate( Utils::getAuth(), $image->getProductId(), $data );
+        $response = SpmProductsImages::bulkSave( Utils::getAuth(), $image->getProductId(), $data );
         
         Utils::handleResponse( $response );
 

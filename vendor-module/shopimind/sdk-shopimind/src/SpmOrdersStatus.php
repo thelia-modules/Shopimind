@@ -76,7 +76,10 @@ class SpmOrdersStatus
         return $this->processSave( 'orders-statuses', $data );
     }
 
-
+    /**
+     * @param $auth GuzzleClient
+     * @return mixed
+     */
     public static function bulkSave( $auth, $data )
     {
         return self::processBulkSave( $auth, 'orders-statuses', $data );
@@ -133,3 +136,4 @@ class SpmOrdersStatus
         return self::processBulkDelete( $auth, $endpoint, $postData );
     }
 }
+ 

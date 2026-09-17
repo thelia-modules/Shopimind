@@ -39,7 +39,7 @@ class CustomersListener
 
         $data[] = CustomersData::formatCustomer( $customer );
         
-        $response = SpmCustomers::bulkUpdate( Utils::getAuth(), $data );
+        $response = SpmCustomers::bulkSave( Utils::getAuth(), $data );
         
         Utils::handleResponse( $response );
 
