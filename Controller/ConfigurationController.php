@@ -33,7 +33,7 @@ class ConfigurationController extends BaseAdminController
             return $response;
         }
 
-        $tokenProvider->checkToken((string) $request->query->get('_token'));
+        $tokenProvider->checkToken((string) $request->request->get('_token'));
 
         $response = $this->redirectToConfigurationPage();
 
