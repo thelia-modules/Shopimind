@@ -183,7 +183,7 @@ class Utils
      *
      * @param string $controller
      */
-    public static function launchSynchronisation( $object, $lastUpdate, $ids = null, $requestedBy = null, $idShopAskSyncs )
+    public static function launchSynchronisation( $object, $lastUpdate, $ids, $requestedBy, $idShopAskSyncs )
     {
         try {
             if ( function_exists('exec') && is_callable('exec') ) {
