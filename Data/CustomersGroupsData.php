@@ -2,20 +2,17 @@
 
 namespace Shopimind\Data;
 
-use CustomerFamily\Model\CustomerFamily;
-use CustomerFamily\Model\CustomerFamilyI18n;
-
 class CustomersGroupsData
 {
     /**
      * Formats the customer customerGroup data to match the Shopimind format.
      *
-     * @param CustomerFamily $customerGroup
-     * @param CustomerFamilyI18n $customerGroupTranslated
-     * @param CustomerFamilyI18n $customersGroupDefault
+     * @param \CustomerFamily\Model\CustomerFamily $customerGroup
+     * @param \CustomerFamily\Model\CustomerFamilyI18n $customerGroupTranslated
+     * @param \CustomerFamily\Model\CustomerFamilyI18n $customersGroupDefault
      * @return array
      */
-    public static function formatCustomerGroup( CustomerFamily $customerGroup, CustomerFamilyI18n $customerGroupTranslated, CustomerFamilyI18n $customersGroupDefault ): array
+    public static function formatCustomerGroup( object $customerGroup, object $customerGroupTranslated, object $customersGroupDefault ): array
     {
         $currentDateTime = new \DateTime();
 

@@ -27,7 +27,7 @@ class ProductsVariationsData
      * @param EventDispatcherInterface $dispatcher
      * @return array
      */
-    public static function formatProductVariation( ProductSaleElements $productVariation, $defaultTitle = null, $localeParam = null, EventDispatcherInterface $dispatcher ): array
+    public static function formatProductVariation( ProductSaleElements $productVariation, $defaultTitle, $localeParam, EventDispatcherInterface $dispatcher ): array
     {
         $locale = !empty( $localeParam ) ? $localeParam : LangQuery::create()->findOneByByDefault(true)->getLocale();
 

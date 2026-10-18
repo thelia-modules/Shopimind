@@ -6,7 +6,6 @@ use Thelia\Model\NewsletterQuery;
 use Thelia\Model\Base\Customer;
 use Thelia\Model\AddressQuery;
 use Thelia\Model\LangQuery;
-use CustomerFamily\Model\Base\CustomerCustomerFamilyQuery;
 use Shopimind\lib\Utils;
 
 class CustomersData
@@ -29,7 +28,9 @@ class CustomersData
 
         $groupIds = null;
         if ( Utils::isCustomerFamilyActive() ) {
-            $groupIds = CustomerCustomerFamilyQuery::create()->filterByCustomerId( $customer->getId() )->select('CustomerFamilyId')->find()->toArray();        
+            // CustomerFamily is optional: its class is only reached through this variable.
+            $customerFamilyQuery = 'CustomerFamily\Model\Base\CustomerCustomerFamilyQuery';
+            $groupIds = $customerFamilyQuery::create()->filterByCustomerId( $customer->getId() )->select('CustomerFamilyId')->find()->toArray();        
             $groupIds = array_map( 'strval', $groupIds );
         }
 

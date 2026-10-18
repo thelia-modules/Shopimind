@@ -8,12 +8,22 @@ use Symfony\Component\HttpFoundation\Request;
 use Shopimind\SdkShopimind\SpmCustomersGroups;
 use Shopimind\Data\CustomersGroupsData; 
 use Shopimind\lib\Utils;
-use CustomerFamily\Model\CustomerFamilyQuery;
+use Propel\Runtime\ActiveQuery\ModelCriteria;
 use Thelia\Model\Base\LangQuery;
 use Shopimind\Model\ShopimindSyncStatus;
 
 class SyncCustomersGroups
 {
+    /**
+     * CustomerFamily is an optional module: its query class is only reached through this variable.
+     */
+    private static function customerFamilyQuery(): ModelCriteria
+    {
+        $queryClass = 'CustomerFamily\Model\CustomerFamilyQuery';
+
+        return $queryClass::create();
+    }
+
     /**
      * Process synchronization for customers groups
      *
@@ -31,15 +41,15 @@ class SyncCustomersGroups
 
         if ( empty( $lastUpdate ) ) {
             if ( empty( $customersGroupsIds ) ) {
-                $count = CustomerFamilyQuery::create()->find()->count();
+                $count = self::customerFamilyQuery()->find()->count();
             }else {
-                $count = CustomerFamilyQuery::create()->filterById( $customersGroupsIds )->find()->count();
+                $count = self::customerFamilyQuery()->filterById( $customersGroupsIds )->find()->count();
             }
         } else {
             if ( empty( $customersGroupsIds ) ) {
-                $count = CustomerFamilyQuery::create()->filterByUpdatedAt( $lastUpdate, '>=')->count();
+                $count = self::customerFamilyQuery()->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }else {
-                $count = CustomerFamilyQuery::create()->filterById( $customersGroupsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
+                $count = self::customerFamilyQuery()->filterById( $customersGroupsIds )->filterByUpdatedAt( $lastUpdate, '>=')->count();
             }
         }
 
@@ -132,13 +142,13 @@ class SyncCustomersGroups
             do {
                 if ( empty( $lastUpdate ) ) {
                     if ( empty( $customersGroupsIds ) ) {
-                        $customersGroups = CustomerFamilyQuery::create()
+                        $customersGroups = self::customerFamilyQuery()
                             ->orderByUpdatedAt()
                             ->offset( $offset )
                             ->limit( $limit )
                             ->find();
                     }else {
-                        $customersGroups = CustomerFamilyQuery::create()
+                        $customersGroups = self::customerFamilyQuery()
                             ->orderByUpdatedAt()
                             ->filterById( $customersGroupsIds )
                             ->offset( $offset )
@@ -148,13 +158,13 @@ class SyncCustomersGroups
                 } else {
                     $lastUpdate = trim( $lastUpdate, '"\'');
                     if ( empty( $customersGroupsIds ) ) {
-                        $customersGroups = CustomerFamilyQuery::create()
+                        $customersGroups = self::customerFamilyQuery()
                             ->orderByUpdatedAt()
                             ->offset( $offset )
                             ->limit( $limit )
                             ->filterByUpdatedAt( $lastUpdate, '>=' );
                     }else {
-                        $customersGroups = CustomerFamilyQuery::create()
+                        $customersGroups = self::customerFamilyQuery()
                             ->orderByUpdatedAt()
                             ->filterById( $customersGroupsIds )
                             ->offset( $offset )

@@ -22,7 +22,6 @@ use Thelia\Model\Event\ProductSaleElementsEvent;
 use Thelia\Core\Event\ProductSaleElement\ProductSaleElementUpdateEvent;
 use Thelia\Core\Event\ProductSaleElement\ProductSaleElementCreateEvent;
 use Thelia\Model\Event\CouponEvent;
-use CustomerFamily\Event\CustomerFamilyEvents;
 
 use Shopimind\EventListeners\CustomersListener;
 use Shopimind\EventListeners\CustomersGroupsListener;
@@ -103,10 +102,12 @@ class EventListeners implements EventSubscriberInterface
         ];
 
         if ( Utils::isCustomerFamilyActive() ) {
+            // CustomerFamily is optional: its class is only reached through this variable.
+            $customerFamilyEvents = 'CustomerFamily\Event\CustomerFamilyEvents';
             $customersGroupsListener = [
-                CustomerFamilyEvents::CUSTOMER_FAMILY_CREATE => ['postCustomerGroupInsert', $customersGroupsPriority],
-                CustomerFamilyEvents::CUSTOMER_FAMILY_UPDATE => ['postCustomerGroupUpdate', $customersGroupsPriority],
-                CustomerFamilyEvents::CUSTOMER_FAMILY_DELETE => ['postCustomerGroupDelete', $customersGroupsPriority],    
+                $customerFamilyEvents::CUSTOMER_FAMILY_CREATE => ['postCustomerGroupInsert', $customersGroupsPriority],
+                $customerFamilyEvents::CUSTOMER_FAMILY_UPDATE => ['postCustomerGroupUpdate', $customersGroupsPriority],
+                $customerFamilyEvents::CUSTOMER_FAMILY_DELETE => ['postCustomerGroupDelete', $customersGroupsPriority],    
             ];
 
             $eventsListenner = array_merge( $eventsListenner, $customersGroupsListener );

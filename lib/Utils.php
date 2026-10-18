@@ -101,7 +101,7 @@ class Utils
         $config = ShopimindQuery::create()->findOne();
         
         if ( !empty( $config ) && ($config->getLog()) ) {
-            $logDir = THELIA_MODULE_DIR . '/Shopimind/logs';
+            $logDir = dirname(__DIR__) . '/logs';
             $logFile = $logDir . '/module.log';
 
             if (!is_dir($logDir)) {
@@ -136,7 +136,7 @@ class Utils
      *
      */
     public static function getParameters(){
-        $parametersFile = THELIA_MODULE_DIR . '/Shopimind/parameters.yml';
+        $parametersFile = dirname(__DIR__) . '/parameters.yml';
         if ( file_exists( $parametersFile ) ) {
             return Yaml::parseFile(  $parametersFile );
         }
@@ -183,7 +183,7 @@ class Utils
      *
      * @param string $controller
      */
-    public static function launchSynchronisation( $object, $lastUpdate, $ids = null, $requestedBy = null, $idShopAskSyncs )
+    public static function launchSynchronisation( $object, $lastUpdate, $ids, $requestedBy, $idShopAskSyncs )
     {
         try {
             if ( function_exists('exec') && is_callable('exec') ) {
@@ -222,7 +222,7 @@ class Utils
      */
     public static function loadSynchronizationStatus() {
         try {
-            $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
+            $synchronizationStatusFile = dirname(__DIR__) . '/synchronization_status.yml';
     
             if ( !file_exists( $synchronizationStatusFile ) ) {
                 $defaultSyncStatus = [
@@ -262,7 +262,7 @@ class Utils
 
         $status['synchronization_status'][$key] = $value;
 
-        $synchronizationStatusFile = THELIA_MODULE_DIR . '/Shopimind/synchronization_status.yml';
+        $synchronizationStatusFile = dirname(__DIR__) . '/synchronization_status.yml';
 
         $yaml = Yaml::dump( $status, 2, 4, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK );
         file_put_contents( $synchronizationStatusFile, $yaml );
