@@ -3,7 +3,6 @@ namespace Shopimind\EventListeners;
 
 require_once __DIR__ . '/../vendor-module/autoload.php';
 
-use CustomerFamily\Event\CustomerFamilyEvent;
 use Shopimind\lib\Utils;
 use Shopimind\Data\CustomersGroupsData;
 use Shopimind\SdkShopimind\SpmCustomersGroups;
@@ -15,9 +14,9 @@ class CustomersGroupsListener
     /**
      * Synchronizes data after a customer group is inserted.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param \CustomerFamily\Event\CustomerFamilyEvent $event The event object triggering the action.
      */
-    public static function postCustomerGroupInsert(CustomerFamilyEvent $event): void
+    public static function postCustomerGroupInsert(object $event): void
     {
         // $customerGroup = $event->getCustomerFamily();
 
@@ -43,9 +42,9 @@ class CustomersGroupsListener
     /**
      * Synchronizes data after a customer group is updated.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param \CustomerFamily\Event\CustomerFamilyEvent $event The event object triggering the action.
      */
-    public static function postCustomerGroupUpdate(CustomerFamilyEvent $event): void
+    public static function postCustomerGroupUpdate(object $event): void
     {
         $customerGroup = $event->getCustomerFamily();
 
@@ -71,9 +70,9 @@ class CustomersGroupsListener
     /**
      * Synchronizes data after a customer group is deleted.
      *
-     * @param CustomerFamilyEvent $event The event object triggering the action.
+     * @param \CustomerFamily\Event\CustomerFamilyEvent $event The event object triggering the action.
      */
-    public static function postCustomerGroupDelete(CustomerFamilyEvent $event): void
+    public static function postCustomerGroupDelete(object $event): void
     {
         $customerGroup = $event->getCustomerFamily()->getid();
         $response = SpmCustomersGroups::delete( Utils::getAuth(), $customerGroup );
