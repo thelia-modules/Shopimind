@@ -188,7 +188,7 @@ class ShopimindHook extends BaseHook
      */
     private function getLogContent(int $lines = 20): string
     {
-        $filepath = THELIA_MODULE_DIR . '/Shopimind/logs/module.log';
+        $filepath = dirname(__DIR__) . '/logs/module.log';
         if (!file_exists($filepath)) {
             return '';
         }
