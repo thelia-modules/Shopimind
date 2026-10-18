@@ -86,9 +86,9 @@ class ConfigurationController extends BaseAdminController
     /**
      * Redirects to the configuration page.
      *
-     * @return void
+     * @return RedirectResponse
      */
-    protected function redirectToConfigurationPage()
+    protected function redirectToConfigurationPage(): RedirectResponse
     {
         return new RedirectResponse(URL::getInstance()->absoluteUrl('/admin/module/Shopimind'));
     }
