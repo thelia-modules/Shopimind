@@ -1,0 +1,6 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			count: 1
+			path: vendor-module/symfony/polyfill-php80/PhpToken.php

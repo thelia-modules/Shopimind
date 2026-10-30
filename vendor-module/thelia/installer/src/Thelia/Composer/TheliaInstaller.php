@@ -12,7 +12,9 @@
 
 namespace Thelia\Composer;
 
+use Composer\Composer;
 use Composer\Installer\LibraryInstaller;
+use Composer\IO\IOInterface;
 use Composer\Package\PackageInterface;
 
 /**
@@ -22,14 +24,45 @@ use Composer\Package\PackageInterface;
  */
 class TheliaInstaller extends LibraryInstaller
 {
-    protected $locations = [
+    /**
+     * Historical Thelia 2 layout: the plugin owns every thelia-* type.
+     */
+    const THELIA2_LOCATIONS = [
         'thelia-module' => 'local/modules/',
         'thelia-frontoffice-template' => 'templates/frontOffice/',
         'thelia-backoffice-template' => 'templates/backOffice/',
         'thelia-email-template' => 'templates/email/',
         'thelia-pdf-template' => 'templates/pdf/',
         'thelia-local' => 'local/',
+        'thelia-core' => ''
     ];
+
+    /**
+     * Thelia 3 layout: the root project routes modules through
+     * composer/installers' installer-paths (vendor/thelia/modules) and keeps
+     * thelia/core in vendor, so the plugin only owns the template types.
+     */
+    const THELIA3_LOCATIONS = [
+        'thelia-frontoffice-template' => 'templates/frontOffice/',
+        'thelia-backoffice-template' => 'templates/backOffice/',
+        'thelia-email-template' => 'templates/email/',
+        'thelia-pdf-template' => 'templates/pdf/',
+        'thelia-local' => 'local/',
+    ];
+
+    protected $locations;
+
+    public function __construct(IOInterface $io, Composer $composer)
+    {
+        parent::__construct($io, $composer);
+
+        // A Thelia 3 root declares an installer-paths rule for thelia-module;
+        // a Thelia 2 root does not. This keeps a single 1.x release line
+        // installing both layouts correctly.
+        $this->locations = $this->rootRoutesModulesThroughInstallerPaths($composer)
+            ? self::THELIA3_LOCATIONS
+            : self::THELIA2_LOCATIONS;
+    }
 
     public function getInstallPath(PackageInterface $package)
     {
@@ -62,5 +95,24 @@ class TheliaInstaller extends LibraryInstaller
     public function supports($packageType)
     {
         return array_key_exists($packageType, $this->locations);
+    }
+
+    /**
+     * @return bool
+     */
+    private function rootRoutesModulesThroughInstallerPaths(Composer $composer)
+    {
+        $extra = $composer->getPackage()->getExtra();
+        $installerPaths = isset($extra['installer-paths']) ? $extra['installer-paths'] : [];
+
+        foreach ($installerPaths as $matchers) {
+            foreach ((array) $matchers as $matcher) {
+                if ('type:thelia-module' === $matcher) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
